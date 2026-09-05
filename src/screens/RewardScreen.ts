@@ -36,6 +36,10 @@ export class RewardScreen implements Screen {
   mount(root: HTMLElement, ctx: GameContext, params: ScreenParams) {
     this.ctx = ctx;
     this.params = params as RewardParams;
+    // Singleton screen: reset per-visit fields before anything reads them.
+    this.doubled = false;
+    this.revealIn = 0.28;
+    this.revealQueue = [];
 
     this.applied = this.apply(this.params);
     ctx.save();

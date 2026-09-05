@@ -54,6 +54,15 @@ export class CombatScreen implements Screen {
     this.params = params as CombatParams;
     this.enemy = this.params.enemy;
     this.combat = new Combat(ctx.state, this.enemy);
+    // Singleton screen: reset every per-fight field, or the second fight
+    // starts already finished.
+    this.queue = [];
+    this.beatTimer = 0;
+    this.busy = true;
+    this.finished = false;
+    this.pendingOutcome = 'ongoing';
+    this.totalGold = 0;
+    this.totalXp = 0;
 
     const el = document.createElement('div');
     el.className = 'screen screen-combat';

@@ -43,6 +43,14 @@ export class RunScreen implements Screen {
 
   mount(root: HTMLElement, ctx: GameContext, _params: ScreenParams) {
     this.ctx = ctx;
+    // Screens are singletons registered once, so every per-visit field has to
+    // be reset here — otherwise the second run inherits `navigating` from the
+    // first and the road never spawns another choice.
+    this.spawnIn = SPAWN_DELAY;
+    this.navigating = false;
+    this.hudDirty = true;
+    this.lastGold = -1;
+    this.lastHp = -1;
     const biome = biomeFor(ctx.state.stats.worldCycle);
 
     const el = document.createElement('div');

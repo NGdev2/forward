@@ -55,6 +55,11 @@ export class InventoryScreen implements Screen {
 
   mount(root: HTMLElement, ctx: GameContext, _params: ScreenParams) {
     this.ctx = ctx;
+    // Singleton screen: start each visit on the bag rather than wherever the
+    // last visit left off.
+    this.tab = 'bag';
+    this.closeSheet = null;
+    this.t = 0;
     const screen = el('div', 'screen screen-inventory');
     this.root = screen;
     root.appendChild(screen);
@@ -174,13 +179,19 @@ export class InventoryScreen implements Screen {
       btn.style.setProperty('--rc', rarityVar(item.rarity));
       btn.innerHTML = `
         <span class="ds-icon">${item.icon}</span>
-        <span class="ds-name">${item.name}</span>
+        <span class="ds-text">
+          <span class="ds-slot">${SLOT_LABEL[slot]}</span>
+          <span class="ds-name">${item.name}</span>
+        </span>
         <span class="ds-power">${item.power}</span>
       `;
     } else {
       btn.innerHTML = `
         <span class="ds-icon ds-empty">${SLOT_ICON[slot]}</span>
-        <span class="ds-name">${SLOT_LABEL[slot]}</span>
+        <span class="ds-text">
+          <span class="ds-slot">${SLOT_LABEL[slot]}</span>
+          <span class="ds-name ds-vacant">Empty</span>
+        </span>
         <span class="ds-power">—</span>
       `;
     }

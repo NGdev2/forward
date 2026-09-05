@@ -2,7 +2,7 @@ import type { GameContext, Screen, ScreenParams } from '../core/context';
 import type { ItemInstance } from '../game/types';
 import { rollShopStock } from '../game/loot';
 import { CONSUMABLES, type ConsumableDef } from '../game/data/consumables';
-import { clear, itemDetail, itemTile, openSheet } from './inventory/ui';
+import { SLOT_LABEL, clear, itemDetail, itemTile, openSheet, rarityVar } from './inventory/ui';
 import { rarityById } from '../game/config';
 
 /* ============================================================================
@@ -46,6 +46,8 @@ export class ShopScreen implements Screen {
 
   mount(root: HTMLElement, ctx: GameContext, _params: ScreenParams) {
     this.ctx = ctx;
+    this.tab = 'gear';
+    this.closeSheet = null;
     const level = ctx.state.stats.level;
     if (!stall || stall.level !== level) {
       stall = { stock: rollShopStock(level, 6), bought: new Set(), level };
@@ -154,7 +156,23 @@ export class ShopScreen implements Screen {
         onClick: () => this.openGear(item, price)
       });
       if (this.ctx.state.stats.gold < price) tile.classList.add('is-unaffordable');
-      grid.appendChild(tile);
+
+      // A bare icon says nothing about what's for sale, so the stall labels
+      // each tile with the item's name and slot.
+      const cell = document.createElement('div');
+      cell.className = 'shop-cell';
+      cell.style.setProperty('--rc', rarityVar(item.rarity));
+      cell.appendChild(tile);
+      const caption = document.createElement('span');
+      caption.className = 'shop-cell-name';
+      caption.textContent = item.name;
+      caption.title = item.name;
+      cell.appendChild(caption);
+      const slot = document.createElement('span');
+      slot.className = 'shop-cell-slot';
+      slot.textContent = SLOT_LABEL[item.slot];
+      cell.appendChild(slot);
+      grid.appendChild(cell);
     }
     if (!grid.children.length) {
       const empty = document.createElement('p');

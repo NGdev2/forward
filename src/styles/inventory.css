@@ -74,11 +74,11 @@
 .doll-slot {
   --rc: var(--border-hi);
   display: grid;
-  grid-template-columns: 26px 1fr auto;
+  grid-template-columns: 22px 1fr auto;
   align-items: center;
-  gap: 6px;
-  padding: 6px 8px;
-  min-height: 44px;
+  gap: 5px;
+  padding: 6px 6px;
+  min-height: 46px;
   text-align: left;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
@@ -94,15 +94,26 @@
 }
 .ds-icon { font-size: 18px; line-height: 1; text-align: center; }
 .ds-empty { opacity: 0.35; filter: grayscale(1); }
+.ds-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }
+.ds-slot {
+  font-size: 8.5px;
+  letter-spacing: var(--tr-label);
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+/* Item names are long and the doll columns are narrow, so wrap to two lines
+   rather than truncating every name to "Vital Ir…". */
 .ds-name {
   font-size: var(--fs-2xs);
   line-height: 1.15;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   color: var(--rc);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
 }
-.doll-slot:not(.is-filled) .ds-name { color: var(--text-mute); }
+.ds-vacant { color: var(--text-faint); font-style: italic; }
 .ds-power {
   font-family: var(--font-num);
   font-size: var(--fs-2xs);

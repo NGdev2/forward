@@ -93,6 +93,32 @@
 }
 .shop-note { padding: 0 0 var(--sp-1); font-size: var(--fs-2xs); }
 
+.shop-grid { grid-template-columns: repeat(3, 1fr); align-items: start; }
+.shop-cell {
+  --rc: var(--r-common);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.shop-cell-name {
+  font-size: var(--fs-2xs);
+  line-height: 1.2;
+  color: var(--rc);
+  text-align: center;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.shop-cell-slot {
+  font-size: 9px;
+  letter-spacing: var(--tr-label);
+  text-transform: uppercase;
+  color: var(--text-faint);
+  text-align: center;
+}
+
 /* -------------------------------------------------------------- supplies -- */
 
 .shop-list { display: flex; flex-direction: column; gap: var(--sp-2); }
