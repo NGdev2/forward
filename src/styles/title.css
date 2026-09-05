@@ -1,0 +1,355 @@
+/* ============================================================================
+ * FORWARD — title screen. Owned by the design-system workstream.
+ * The scenery is a canvas (screens/TitleScreen.ts); everything here is the
+ * overlay: logo treatment, save summary, primer, CTA.
+ * ========================================================================== */
+
+.screen-title {
+  overflow: hidden;
+}
+
+.title-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+/* Vignette + a warm lift off the road, painted over the canvas so the DOM
+   content always has contrast to sit on. */
+.title-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(70% 45% at 50% 78%, rgba(255, 168, 90, 0.1), transparent 70%),
+    radial-gradient(120% 70% at 50% 50%, transparent 40%, rgba(3, 4, 10, 0.55) 78%, rgba(3, 4, 10, 0.9) 100%),
+    linear-gradient(180deg, rgba(3, 4, 10, 0.6) 0%, transparent 22%, transparent 52%, rgba(3, 4, 10, 0.72) 100%);
+}
+
+.title-content {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-5) var(--sp-4) var(--sp-4);
+  gap: var(--sp-3);
+}
+
+/* ------------------------------------------------------------------ logo -- */
+
+.title-head {
+  flex: none;
+  text-align: center;
+  animation: rise-in 700ms var(--ease-out) both;
+}
+
+.title-crest {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-2);
+}
+.title-crest-rule {
+  width: 62px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-deep), var(--gold));
+}
+.title-crest-rule:last-child {
+  transform: scaleX(-1);
+}
+.title-crest-mark {
+  color: var(--gold);
+  font-size: 10px;
+  filter: drop-shadow(0 0 8px var(--gold-glow));
+}
+
+/*
+ * The logo is three stacked layers:
+ *   ::before  a solid dark extrusion, offset down — the carved depth
+ *   <span>    the gold-to-parchment gradient face
+ *   ::after   a slow travelling specular sweep
+ */
+.title-logo {
+  position: relative;
+  display: inline-block;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(40px, 13.5vw, 58px);
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  text-indent: 0.13em; /* balances the trailing letterspace */
+  line-height: 1;
+  text-transform: uppercase;
+  color: transparent;
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 26px rgba(247, 168, 58, 0.22));
+}
+
+.title-logo::before {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  color: #1b1206;
+  -webkit-text-stroke: 6px #1b1206;
+  text-stroke: 6px #1b1206;
+  transform: translateY(3px);
+  z-index: -1;
+}
+
+.title-logo > span {
+  background: linear-gradient(
+    180deg,
+    #fff6dd 0%,
+    #ffd88a 26%,
+    #f0ab2e 52%,
+    #b06f14 68%,
+    #f6cd7a 86%,
+    #ffeec4 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.title-logo::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, 0.85) 50%, transparent 62%);
+  background-size: 260% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: shimmer 5.5s linear infinite;
+  pointer-events: none;
+}
+
+.title-tag {
+  margin-top: var(--sp-2);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.34em;
+  text-indent: 0.34em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+}
+
+/* ----------------------------------------------------------------- stage -- */
+
+.title-stage {
+  position: relative;
+  flex: 1;
+  min-height: 90px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.title-hero {
+  position: relative;
+  z-index: 2;
+  animation: float-bob 4.2s var(--ease-in-out) infinite;
+  filter: drop-shadow(0 14px 18px rgba(0, 0, 0, 0.75)) drop-shadow(0 0 24px rgba(69, 214, 194, 0.16));
+}
+.title-hero canvas {
+  display: block;
+  max-height: 30vh;
+  width: auto;
+  image-rendering: auto;
+}
+
+/* Pool of light on the road under the hero. */
+.title-hero-glow {
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 190px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 190, 120, 0.35), rgba(255, 150, 60, 0));
+  filter: blur(2px);
+  z-index: 1;
+  animation: pulse-glow 4.2s var(--ease-in-out) infinite;
+}
+
+/* ------------------------------------------------------------------ deck -- */
+
+.title-deck {
+  flex: none;
+  animation: rise-in 700ms var(--ease-out) 120ms both;
+}
+
+/* -- returning player summary -- */
+
+.title-save {
+  background: linear-gradient(170deg, rgba(38, 48, 86, 0.82), rgba(11, 14, 27, 0.88));
+  backdrop-filter: blur(10px);
+  border-color: var(--border-hi);
+}
+
+.title-save-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+.title-save-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--sp-3) var(--sp-2);
+  position: relative;
+}
+.title-save-cell + .title-save-cell::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 18%;
+  bottom: 18%;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, var(--border-hi), transparent);
+}
+.title-save-cell b {
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+.title-save-cell span {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-black);
+  letter-spacing: var(--tr-label);
+  text-transform: uppercase;
+  color: var(--text-mute);
+}
+.title-save-cell.is-accent b {
+  color: var(--accent-hi);
+  text-shadow: 0 0 18px var(--accent-glow);
+}
+.title-save-cell.is-gold b {
+  color: var(--gold-hi);
+  text-shadow: 0 0 18px var(--gold-glow);
+}
+.title-save-cell.is-gem b {
+  color: var(--gem-hi);
+  text-shadow: 0 0 18px rgba(124, 156, 255, 0.4);
+}
+
+.title-save-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--sp-1);
+  padding: 0 var(--sp-3) var(--sp-3);
+}
+
+/* -- first-run primer -- */
+
+.title-primer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(170deg, rgba(24, 30, 54, 0.72), rgba(8, 10, 20, 0.82));
+  border: 1px solid var(--border);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--sh-2);
+}
+
+.title-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.title-step {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: 6px 4px;
+}
+.title-step-icon {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  box-shadow: inset 0 1px 0 var(--edge-light);
+}
+.title-step-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.title-step-text b {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-black);
+  color: var(--text);
+  letter-spacing: var(--tr-display);
+}
+.title-step-text span {
+  font-size: var(--fs-xs);
+  line-height: var(--lh-snug);
+  color: var(--text-dim);
+}
+
+.title-help-note {
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
+  color: var(--text-dim);
+}
+
+/* ------------------------------------------------------------------ foot -- */
+
+.title-foot {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+  padding-top: var(--sp-1);
+  animation: rise-in 700ms var(--ease-out) 220ms both;
+}
+.title-foot .btn-lg {
+  letter-spacing: 0.1em;
+}
+
+.title-actions {
+  display: flex;
+  gap: var(--sp-3);
+}
+
+.title-version {
+  font-size: var(--fs-2xs);
+  letter-spacing: var(--tr-label);
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* Short phones: give the road less room, keep the CTA reachable. */
+@media (max-height: 700px) {
+  .title-stage {
+    min-height: 60px;
+  }
+  .title-hero canvas {
+    max-height: 20vh;
+  }
+  .title-step {
+    padding: 3px 4px;
+  }
+}

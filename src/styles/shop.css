@@ -1,0 +1,182 @@
+/* ============================================================================
+ * SHOP — wayside trader. Gear / supplies / gems.
+ * The gems tab is a monetisation *surface* only: no billing SDK is wired up.
+ * ========================================================================== */
+
+.screen-shop {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--grad-page);
+  overflow: hidden;
+}
+
+.shop-top {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: calc(var(--safe-top) + var(--sp-2)) var(--sp-3) var(--sp-2);
+  border-bottom: 1px solid var(--border);
+}
+.shop-top .topbar-title { flex: 1; }
+.shop-purse { display: flex; gap: var(--sp-1); }
+.shop-purse .chip { font-size: var(--fs-xs); padding: 3px 8px; }
+
+.shop-greet {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  background: linear-gradient(180deg, rgba(245, 187, 69, 0.08), transparent);
+}
+.shop-keeper {
+  font-size: 34px;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6));
+}
+.shop-line {
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-style: italic;
+  color: var(--text-dim);
+  line-height: var(--lh-snug);
+}
+
+/* Segmented control, shared with any future tabbed screen. */
+.seg {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 2px;
+  margin: 0 var(--sp-3);
+  padding: 3px;
+  border-radius: var(--radius);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+}
+.seg-btn {
+  padding: 8px 4px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-mute);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--tr-caps);
+  cursor: pointer;
+  transition: background var(--dur), color var(--dur);
+}
+.seg-btn.is-on {
+  background: var(--surface-top);
+  color: var(--text);
+  box-shadow: var(--sh-1);
+}
+
+.shop-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.shop-empty,
+.shop-note {
+  padding: var(--sp-5) var(--sp-3);
+  text-align: center;
+  color: var(--text-mute);
+  font-size: var(--fs-sm);
+  margin: 0;
+}
+.shop-note { padding: 0 0 var(--sp-1); font-size: var(--fs-2xs); }
+
+/* -------------------------------------------------------------- supplies -- */
+
+.shop-list { display: flex; flex-direction: column; gap: var(--sp-2); }
+.shop-row {
+  --rc: var(--r-common);
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--rc) 40%, transparent);
+  background: var(--grad-surface);
+}
+.shop-row-icon { font-size: 26px; text-align: center; }
+.shop-row-text { display: flex; flex-direction: column; min-width: 0; }
+.shop-row-text b { font-size: var(--fs-sm); color: var(--rc); }
+.shop-row-text u {
+  text-decoration: none;
+  font-size: var(--fs-2xs);
+  color: var(--text-dim);
+  line-height: var(--lh-snug);
+}
+.shop-row-text em {
+  font-style: normal;
+  font-size: 9px;
+  letter-spacing: var(--tr-label);
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.shop-buy { white-space: nowrap; font-family: var(--font-num); }
+
+/* ------------------------------------------------------------------ gems -- */
+
+.shop-packs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-2);
+}
+.shop-pack {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--sp-4) var(--sp-1) var(--sp-3);
+  border: 1px solid var(--gem-deep);
+  background: linear-gradient(170deg, #23305e, #141a2e);
+}
+.shop-pack-tag {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--grad-gold);
+  color: var(--text-invert);
+  font-size: 9px;
+  font-weight: var(--fw-black);
+  letter-spacing: var(--tr-caps);
+  white-space: nowrap;
+}
+.shop-pack-icon { font-size: 26px; }
+.shop-pack-gems { font-size: var(--fs-sm); font-family: var(--font-num); color: var(--gem-hi); }
+.shop-pack-price { text-decoration: none; font-size: var(--fs-2xs); color: var(--text-mute); }
+
+.shop-free {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+}
+.shop-free i { font-style: normal; font-size: 18px; }
+.shop-free span { display: flex; flex-direction: column; line-height: var(--lh-tight); }
+.shop-free u {
+  text-decoration: none;
+  font-size: var(--fs-2xs);
+  opacity: 0.75;
+  letter-spacing: var(--tr-caps);
+}
+
+.shop-foot {
+  flex: none;
+  padding: var(--sp-3) var(--sp-3) calc(var(--safe-bottom) + var(--sp-3));
+  background: linear-gradient(180deg, transparent, var(--bg-0) 40%);
+}

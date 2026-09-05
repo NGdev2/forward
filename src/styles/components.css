@@ -1,0 +1,1346 @@
+/* ============================================================================
+ * FORWARD — shared component vocabulary.
+ * Owned by the design-system workstream; consumed by every screen.
+ *
+ * Contents
+ *   1. Buttons          .btn .btn-primary .btn-ghost .btn-danger .btn-gold
+ *                       .btn-sm .btn-block  [disabled]
+ *   2. Icon buttons     .icon-btn
+ *   3. Panels           .panel .panel-hd .panel-bd .panel-ft
+ *   4. Bars             .bar .bar-fill .bar-ghost .bar-hp .bar-xp .bar-boss
+ *                       .bar-energy .bar-label .bar-pips
+ *   5. Chips + badges   .chip .chip-* .badge .dot
+ *   6. Topbar           .topbar .topbar-stat .topbar-title
+ *   7. Sheets           .sheet .sheet-hd .sheet-bd .sheet-scrim
+ *   8. Rarity           .rarity-* .tile .tile-rarity
+ *   9. Misc             .divider .empty .stat-row .kv .tooltip .skeleton
+ *                       .scroll .switch .list .card
+ * ========================================================================== */
+
+/* ==========================================================================
+ * 1. BUTTONS
+ * Every button is a two-layer object: a gradient body plus a ::before sheen
+ * and a ::after inner bevel. Pressing physically sinks it 1px and swaps the
+ * outer shadow for an inset, which is what makes it feel like a real key.
+ * ======================================================================== */
+
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  min-height: var(--tap);
+  padding: 0 var(--sp-5);
+  border-radius: var(--radius);
+  border: 1px solid var(--border-hi);
+  background: var(--grad-surface-hi);
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tr-caps);
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow:
+    var(--sh-1),
+    inset 0 1px 0 var(--edge-light),
+    inset 0 -2px 0 var(--edge-dark);
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    filter var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) linear;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Top sheen. */
+.btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 55%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Hover/active brightening layer, also used for the press ripple. */
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 140% at 50% 120%, rgba(255, 255, 255, 0.18), transparent 60%);
+  opacity: 0;
+  transition: opacity var(--dur-fast) linear;
+  pointer-events: none;
+  z-index: -1;
+}
+
+@media (hover: hover) {
+  .btn:hover::after {
+    opacity: 1;
+  }
+  .btn:hover {
+    filter: brightness(1.08);
+  }
+}
+
+.btn:active,
+.btn.is-pressed {
+  transform: translateY(2px) scale(0.985);
+  filter: brightness(0.94);
+  box-shadow: var(--sh-press), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+.btn:active::after,
+.btn.is-pressed::after {
+  opacity: 1;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--accent-hi);
+  outline-offset: 2px;
+}
+
+.btn[disabled],
+.btn:disabled,
+.btn.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+  filter: grayscale(0.65);
+  transform: none;
+  box-shadow: var(--sh-inset);
+  pointer-events: none;
+}
+
+/* -- variants -- */
+
+.btn-primary {
+  background: var(--grad-accent);
+  border-color: rgba(142, 244, 229, 0.55);
+  color: #04211f;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.28);
+  box-shadow:
+    var(--sh-2),
+    0 0 22px var(--accent-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.32);
+}
+.btn-primary:active {
+  box-shadow: var(--sh-press), 0 0 14px var(--accent-glow);
+}
+
+.btn-gold {
+  background: var(--grad-gold);
+  border-color: rgba(255, 223, 148, 0.6);
+  color: #2c1a02;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+  box-shadow:
+    var(--sh-2),
+    0 0 22px var(--gold-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.3);
+}
+.btn-gold:active {
+  box-shadow: var(--sh-press), 0 0 14px var(--gold-glow);
+}
+
+.btn-danger {
+  background: var(--grad-danger);
+  border-color: rgba(255, 146, 165, 0.5);
+  color: #fff1f3;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  box-shadow:
+    var(--sh-2),
+    0 0 22px var(--danger-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.35);
+}
+.btn-danger:active {
+  box-shadow: var(--sh-press), 0 0 14px var(--danger-glow);
+}
+
+.btn-ghost {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--border-hi);
+  color: var(--text-2);
+  box-shadow: none;
+  backdrop-filter: blur(6px);
+}
+.btn-ghost::before {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), transparent 60%);
+}
+.btn-ghost:active {
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: var(--sh-press);
+}
+
+/* -- sizes / layout -- */
+
+.btn-sm {
+  min-height: 34px;
+  padding: 0 var(--sp-3);
+  font-size: var(--fs-xs);
+  border-radius: var(--radius-sm);
+  letter-spacing: var(--tr-label);
+}
+
+.btn-lg {
+  min-height: 58px;
+  padding: 0 var(--sp-7);
+  font-size: var(--fs-lg);
+}
+
+.btn-block {
+  display: flex;
+  width: 100%;
+}
+
+/* Sub-label under the main label, e.g. a cost. */
+.btn-sub {
+  display: block;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--tr-label);
+  opacity: 0.75;
+  text-transform: none;
+}
+.btn-stack {
+  flex-direction: column;
+  gap: 3px;
+  padding-top: var(--sp-2);
+  padding-bottom: var(--sp-2);
+}
+
+/* Attention loop for the single most important CTA on a screen. */
+@keyframes btn-breathe {
+  0%,
+  100% {
+    box-shadow: var(--sh-2), 0 0 16px var(--accent-glow), inset 0 1px 0 rgba(255, 255, 255, 0.45),
+      inset 0 -3px 0 rgba(0, 0, 0, 0.32);
+  }
+  50% {
+    box-shadow: var(--sh-2), 0 0 34px var(--accent-glow), inset 0 1px 0 rgba(255, 255, 255, 0.45),
+      inset 0 -3px 0 rgba(0, 0, 0, 0.32);
+  }
+}
+.btn-cta {
+  animation: btn-breathe 2.6s var(--ease-in-out) infinite;
+}
+
+/* ==========================================================================
+ * 2. ICON BUTTON
+ * ======================================================================== */
+
+.icon-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap);
+  height: var(--tap);
+  flex: none;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-hi);
+  background: var(--grad-surface-hi);
+  color: var(--text-2);
+  font-size: var(--fs-lg);
+  line-height: 1;
+  box-shadow: var(--sh-1), inset 0 1px 0 var(--edge-light), inset 0 -2px 0 var(--edge-dark);
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) linear;
+}
+.icon-btn:active {
+  transform: translateY(2px) scale(0.96);
+  box-shadow: var(--sh-press);
+  color: var(--text);
+}
+.icon-btn:focus-visible {
+  outline: 2px solid var(--accent-hi);
+  outline-offset: 2px;
+}
+.icon-btn.is-active {
+  color: var(--accent);
+  border-color: rgba(69, 214, 194, 0.5);
+  box-shadow: var(--glow-accent);
+}
+.icon-btn[disabled],
+.icon-btn:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+.icon-btn-sm {
+  width: 34px;
+  height: 34px;
+  font-size: var(--fs-sm);
+  border-radius: var(--radius-sm);
+}
+.icon-btn-round {
+  border-radius: var(--radius-pill);
+}
+
+/* A small count/alert marker on an icon button or tile. */
+.icon-btn .badge,
+.tile .badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+}
+
+/* ==========================================================================
+ * 3. PANEL — the standard raised surface
+ * ======================================================================== */
+
+.panel {
+  position: relative;
+  background: var(--grad-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--sh-2), inset 0 1px 0 var(--edge-light);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* Woven texture, kept near-invisible — it only has to break the flat fill. */
+.panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--tex-hatch);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.panel-hd {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 42px;
+  padding: var(--sp-2) var(--sp-4);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.12));
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-black);
+  letter-spacing: var(--tr-label);
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+/* Accent rule under the header, a small piece of craft that reads as "game". */
+.panel-hd::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--accent-dim), transparent 70%);
+  opacity: 0.6;
+  pointer-events: none;
+}
+.panel-hd .spacer + * {
+  color: var(--text-2);
+}
+
+.panel-bd {
+  padding: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.panel-ft {
+  padding: var(--sp-3) var(--sp-4);
+  border-top: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.2);
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.panel-flat {
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: none;
+}
+.panel-sunken {
+  background: var(--grad-sunken);
+  box-shadow: var(--sh-inset);
+  border-color: rgba(0, 0, 0, 0.5);
+}
+.panel-accent {
+  border-color: rgba(69, 214, 194, 0.35);
+  box-shadow: var(--sh-2), var(--glow-accent);
+}
+.panel-danger {
+  border-color: rgba(255, 77, 109, 0.35);
+  box-shadow: var(--sh-2), var(--glow-danger);
+}
+
+/* ==========================================================================
+ * 4. BARS
+ * `.bar` is the sunken track, `.bar-fill` the gradient fill. Set width with
+ * `style.width = pct + '%'`. `.bar-ghost` sits BEHIND the fill and is given
+ * the previous value with a delayed transition, producing the damage trail.
+ *
+ *   <div class="bar bar-hp">
+ *     <div class="bar-ghost"></div>
+ *     <div class="bar-fill"></div>
+ *     <span class="bar-label">128 / 200</span>
+ *   </div>
+ * ======================================================================== */
+
+.bar {
+  position: relative;
+  height: 12px;
+  width: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--grad-sunken);
+  border: 1px solid rgba(0, 0, 0, 0.55);
+  box-shadow: var(--sh-inset), 0 1px 0 var(--edge-light);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, var(--text-2), var(--text-mute));
+  transition: width var(--dur-slow) var(--ease-out);
+  will-change: width;
+}
+
+/* Cylindrical shine over the fill. */
+.bar-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--sheen);
+  pointer-events: none;
+}
+
+/* Lagging ghost — set its width one frame later, or with a CSS delay, to get
+   the classic "chunk of damage draining away" read. */
+.bar-ghost {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.55);
+  opacity: 0.35;
+  transition: width 620ms var(--ease-out) 180ms;
+}
+
+.bar-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-black);
+  letter-spacing: var(--tr-caps);
+  color: var(--text);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+/* -- sizes -- */
+.bar-sm {
+  height: 7px;
+}
+.bar-lg {
+  height: 20px;
+}
+.bar-xl {
+  height: 26px;
+}
+
+/* -- semantic fills -- */
+.bar-hp .bar-fill {
+  background: var(--grad-hp);
+  box-shadow: 0 0 10px rgba(240, 69, 63, 0.4);
+}
+.bar-hp .bar-ghost {
+  background: #ffd9a0;
+}
+/* Low-health warning: pulses, and the track glows red. */
+.bar-hp.is-low {
+  border-color: rgba(255, 77, 109, 0.6);
+  animation: hp-warn 1.1s var(--ease-in-out) infinite;
+}
+@keyframes hp-warn {
+  0%,
+  100% {
+    box-shadow: var(--sh-inset), 0 0 4px rgba(255, 77, 109, 0.3);
+  }
+  50% {
+    box-shadow: var(--sh-inset), 0 0 16px rgba(255, 77, 109, 0.75);
+  }
+}
+
+.bar-xp .bar-fill {
+  background: var(--grad-xp);
+  box-shadow: 0 0 10px rgba(154, 134, 255, 0.45);
+}
+
+.bar-boss .bar-fill {
+  background: var(--grad-boss);
+  box-shadow: 0 0 14px rgba(242, 104, 58, 0.5);
+}
+.bar-boss {
+  border-color: rgba(247, 168, 58, 0.28);
+}
+/* When the boss bar is full it becomes the loudest thing on screen. */
+.bar-boss.is-full .bar-fill {
+  animation: boss-ready 1.3s var(--ease-in-out) infinite;
+}
+@keyframes boss-ready {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.4) saturate(1.3);
+  }
+}
+
+.bar-energy .bar-fill {
+  background: var(--grad-energy);
+  box-shadow: 0 0 10px rgba(255, 177, 68, 0.4);
+}
+
+/* Animated crawl on the fill surface — used on boss/energy for "charging". */
+.bar-flow .bar-fill::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    115deg,
+    rgba(255, 255, 255, 0.16) 0px,
+    rgba(255, 255, 255, 0.16) 6px,
+    transparent 6px,
+    transparent 14px
+  );
+  animation: bar-crawl 700ms linear infinite;
+}
+@keyframes bar-crawl {
+  to {
+    transform: translateX(14px);
+  }
+}
+
+/* Segmented progress (boss steps): N pips, `.is-on` for filled ones. */
+.bar-pips {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+}
+.bar-pips > i {
+  flex: 1;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--grad-sunken);
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  box-shadow: var(--sh-inset);
+}
+.bar-pips > i.is-on {
+  background: var(--grad-boss);
+  border-color: rgba(247, 168, 58, 0.5);
+  box-shadow: 0 0 10px rgba(242, 104, 58, 0.55);
+}
+
+/* Stacked label + bar. */
+.bar-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bar-row > .row {
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tr-label);
+  text-transform: uppercase;
+  color: var(--text-mute);
+}
+
+/* ==========================================================================
+ * 5. CHIPS + BADGES
+ * ======================================================================== */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-hi);
+  color: var(--text-dim);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-black);
+  letter-spacing: var(--tr-label);
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.chip-lg {
+  height: 28px;
+  padding: 0 12px;
+  font-size: var(--fs-xs);
+}
+
+.chip-accent {
+  color: var(--accent-hi);
+  border-color: rgba(69, 214, 194, 0.45);
+  background: rgba(69, 214, 194, 0.12);
+}
+.chip-gold {
+  color: var(--gold-hi);
+  border-color: rgba(245, 187, 69, 0.45);
+  background: rgba(245, 187, 69, 0.12);
+}
+.chip-gem {
+  color: var(--gem-hi);
+  border-color: rgba(124, 156, 255, 0.45);
+  background: rgba(124, 156, 255, 0.12);
+}
+.chip-good {
+  color: var(--good-hi);
+  border-color: rgba(86, 224, 140, 0.45);
+  background: rgba(86, 224, 140, 0.12);
+}
+.chip-danger {
+  color: var(--danger-hi);
+  border-color: rgba(255, 77, 109, 0.45);
+  background: rgba(255, 77, 109, 0.12);
+}
+.chip-xp {
+  color: var(--xp-hi);
+  border-color: rgba(154, 134, 255, 0.45);
+  background: rgba(154, 134, 255, 0.12);
+}
+.chip-solid {
+  background: var(--grad-surface-hi);
+  color: var(--text-2);
+  box-shadow: var(--sh-1);
+}
+
+/* Danger levels for lane encounters: 1 = safe, 5 = deadly. */
+.chip-danger-1 {
+  color: var(--good);
+  border-color: rgba(86, 224, 140, 0.4);
+  background: rgba(86, 224, 140, 0.1);
+}
+.chip-danger-2 {
+  color: #cfe06a;
+  border-color: rgba(207, 224, 106, 0.4);
+  background: rgba(207, 224, 106, 0.1);
+}
+.chip-danger-3 {
+  color: var(--gold);
+  border-color: rgba(245, 187, 69, 0.42);
+  background: rgba(245, 187, 69, 0.1);
+}
+.chip-danger-4 {
+  color: #ff8a4c;
+  border-color: rgba(255, 138, 76, 0.45);
+  background: rgba(255, 138, 76, 0.12);
+}
+.chip-danger-5 {
+  color: var(--danger-hi);
+  border-color: rgba(255, 77, 109, 0.6);
+  background: rgba(255, 77, 109, 0.16);
+  box-shadow: 0 0 12px var(--danger-glow);
+  animation: pulse-glow 1.6s var(--ease-in-out) infinite;
+}
+
+/* Small numeric marker. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--grad-danger);
+  color: #fff;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-black);
+  line-height: 1;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  font-variant-numeric: tabular-nums;
+}
+.badge-gold {
+  background: var(--grad-gold);
+  color: #2c1a02;
+}
+.badge-accent {
+  background: var(--grad-accent);
+  color: #04211f;
+}
+
+/* Status dot. */
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-mute);
+  flex: none;
+}
+.dot-good {
+  background: var(--good);
+  box-shadow: 0 0 8px var(--good);
+}
+.dot-danger {
+  background: var(--danger);
+  box-shadow: 0 0 8px var(--danger);
+}
+
+/* ==========================================================================
+ * 6. TOPBAR — persistent HUD row
+ * ======================================================================== */
+
+.topbar {
+  position: relative;
+  z-index: var(--z-topbar);
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: var(--topbar-h);
+  padding: 0 var(--sp-3);
+  background: linear-gradient(180deg, rgba(24, 30, 54, 0.96), rgba(11, 14, 27, 0.92));
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+}
+/* Hairline of brand light along the bottom edge. */
+.topbar::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-dim) 35%, var(--gold-deep) 75%, transparent);
+  opacity: 0.5;
+}
+
+.topbar-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-black);
+  letter-spacing: var(--tr-label);
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+
+.topbar-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid var(--border);
+  box-shadow: var(--sh-inset);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.topbar-stat i {
+  font-style: normal;
+  font-size: var(--fs-md);
+  line-height: 1;
+  filter: drop-shadow(0 0 6px currentColor);
+}
+.topbar-stat b {
+  font-weight: var(--fw-black);
+}
+.topbar-stat-gold {
+  color: var(--gold-hi);
+  border-color: rgba(245, 187, 69, 0.28);
+}
+.topbar-stat-gem {
+  color: var(--gem-hi);
+  border-color: rgba(124, 156, 255, 0.28);
+}
+.topbar-stat-level {
+  color: var(--accent-hi);
+  border-color: rgba(69, 214, 194, 0.28);
+}
+/* Flash when a value changes: toggle `.is-bumped` for ~400ms. */
+.topbar-stat.is-bumped {
+  animation: stat-bump 420ms var(--ease-back);
+}
+@keyframes stat-bump {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.14);
+    filter: brightness(1.5);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* ==========================================================================
+ * 7. SHEET — bottom-sheet modal
+ *   <div class="sheet-scrim is-open">
+ *     <div class="sheet">
+ *       <div class="sheet-hd">…</div>
+ *       <div class="sheet-bd">…</div>
+ *     </div>
+ *   </div>
+ * Toggle `.is-open` on the scrim.
+ * ======================================================================== */
+
+.sheet-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-sheet);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  background: rgba(3, 4, 10, 0.72);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur) var(--ease-out);
+}
+.sheet-scrim.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sheet {
+  position: relative;
+  max-height: 88%;
+  display: flex;
+  flex-direction: column;
+  background: var(--grad-surface-hi);
+  border-top: 1px solid var(--border-hi);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  box-shadow: var(--sh-3), inset 0 1px 0 var(--edge-light);
+  padding-bottom: var(--safe-bottom);
+  transform: translateY(102%);
+  transition: transform var(--dur-slow) var(--ease-out);
+  overflow: hidden;
+}
+.sheet-scrim.is-open .sheet {
+  transform: none;
+}
+
+/* Grab handle. */
+.sheet::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 42px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--border-strong);
+  pointer-events: none;
+}
+
+.sheet-hd {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-5) var(--sp-4) var(--sp-3);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-black);
+  letter-spacing: var(--tr-display);
+  color: var(--text);
+}
+.sheet-hd .icon-btn {
+  margin-left: auto;
+}
+
+.sheet-bd {
+  padding: var(--sp-4);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.sheet-ft {
+  padding: var(--sp-3) var(--sp-4);
+  border-top: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.25);
+  display: flex;
+  gap: var(--sp-2);
+}
+
+/* Centred dialog variant (confirmations). */
+.sheet-scrim.is-center {
+  justify-content: center;
+  align-items: center;
+  padding: var(--sp-5);
+}
+.sheet-scrim.is-center .sheet {
+  width: 100%;
+  max-width: 380px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-hi);
+  transform: translateY(16px) scale(0.94);
+  opacity: 0;
+  transition: transform var(--dur) var(--ease-back), opacity var(--dur) var(--ease-out);
+  padding-bottom: 0;
+}
+.sheet-scrim.is-center.is-open .sheet {
+  transform: none;
+  opacity: 1;
+}
+.sheet-scrim.is-center .sheet::before {
+  display: none;
+}
+
+/* ==========================================================================
+ * 8. RARITY
+ * `.rarity-<tier>` colours text. Add `.tile-rarity` alongside it on an item
+ * tile to get the matching border, corner light and aura.
+ * ======================================================================== */
+
+.rarity-common {
+  --rc: var(--r-common);
+  --rc-soft: var(--r-common-soft);
+  --rc-deep: var(--r-common-deep);
+  --rc-glow: var(--r-common-glow);
+  color: var(--r-common);
+}
+.rarity-uncommon {
+  --rc: var(--r-uncommon);
+  --rc-soft: var(--r-uncommon-soft);
+  --rc-deep: var(--r-uncommon-deep);
+  --rc-glow: var(--r-uncommon-glow);
+  color: var(--r-uncommon);
+}
+.rarity-rare {
+  --rc: var(--r-rare);
+  --rc-soft: var(--r-rare-soft);
+  --rc-deep: var(--r-rare-deep);
+  --rc-glow: var(--r-rare-glow);
+  color: var(--r-rare);
+}
+.rarity-epic {
+  --rc: var(--r-epic);
+  --rc-soft: var(--r-epic-soft);
+  --rc-deep: var(--r-epic-deep);
+  --rc-glow: var(--r-epic-glow);
+  color: var(--r-epic);
+}
+.rarity-legendary {
+  --rc: var(--r-legendary);
+  --rc-soft: var(--r-legendary-soft);
+  --rc-deep: var(--r-legendary-deep);
+  --rc-glow: var(--r-legendary-glow);
+  color: var(--r-legendary);
+}
+.rarity-mythic {
+  --rc: var(--r-mythic);
+  --rc-soft: var(--r-mythic-soft);
+  --rc-deep: var(--r-mythic-deep);
+  --rc-glow: var(--r-mythic-glow);
+  color: var(--r-mythic);
+}
+
+/* Text glow for the top two tiers so a mythic drop reads instantly. */
+.rarity-legendary,
+.rarity-mythic {
+  text-shadow: 0 0 12px var(--rc-glow);
+}
+
+/* -- item tile -- */
+
+.tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  border-radius: var(--radius);
+  background: var(--grad-surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--sh-1), inset 0 1px 0 var(--edge-light);
+  overflow: hidden;
+  isolation: isolate;
+  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+.tile:active {
+  transform: scale(0.95);
+}
+.tile canvas,
+.tile img {
+  max-width: 78%;
+  max-height: 78%;
+}
+.tile-empty {
+  background: var(--grad-sunken);
+  box-shadow: var(--sh-inset);
+  border-style: dashed;
+  border-color: var(--border);
+  color: var(--text-faint);
+  font-size: var(--fs-xl);
+}
+
+/* Rarity treatment: tinted radial wash from the bottom, coloured border and
+   an outer aura whose strength scales with tier (set by the -glow token). */
+.tile-rarity {
+  border-color: var(--rc, var(--r-common));
+  background:
+    radial-gradient(90% 70% at 50% 118%, var(--rc-soft, transparent), transparent 70%),
+    var(--grad-surface);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.5),
+    0 0 14px var(--rc-glow, transparent),
+    inset 0 1px 0 var(--edge-light),
+    inset 0 -18px 24px -18px var(--rc, transparent);
+}
+/* Corner notch of pure rarity colour — cheap, and reads at thumbnail size. */
+.tile-rarity::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  border-width: 0 12px 12px 0;
+  border-style: solid;
+  border-color: transparent var(--rc, var(--r-common)) transparent transparent;
+  opacity: 0.9;
+}
+/* Legendary+ get a slow travelling sheen. */
+.tile-rarity.rarity-legendary::before,
+.tile-rarity.rarity-mythic::before {
+  content: '';
+  position: absolute;
+  inset: -40%;
+  background: linear-gradient(115deg, transparent 42%, rgba(255, 255, 255, 0.22) 50%, transparent 58%);
+  animation: shimmer 3.4s linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Item name row helper. */
+.item-name {
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-sm);
+  letter-spacing: var(--tr-display);
+}
+
+/* "Upgrade" marker. */
+.tile.is-upgrade::before,
+.item-upgrade {
+  color: var(--good);
+}
+.tile.is-upgrade {
+  outline: 1px solid var(--good);
+  outline-offset: -3px;
+}
+
+/* ==========================================================================
+ * 9. MISC
+ * ======================================================================== */
+
+/* Divider with optional centred label: <div class="divider"><span>OR</span></div> */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  color: var(--text-faint);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-black);
+  letter-spacing: var(--tr-label);
+  text-transform: uppercase;
+}
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-hi), transparent);
+}
+.divider-plain::before {
+  display: none;
+}
+.divider-plain::after {
+  display: none;
+}
+.rule {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-hi) 20%, var(--border-hi) 80%, transparent);
+  border: 0;
+  margin: 0;
+}
+
+/* Empty state. */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding: var(--sp-7) var(--sp-4);
+  text-align: center;
+  color: var(--text-mute);
+  font-size: var(--fs-sm);
+}
+.empty-icon {
+  font-size: 40px;
+  opacity: 0.35;
+  filter: grayscale(1);
+}
+.empty-title {
+  font-family: var(--font-display);
+  font-weight: var(--fw-black);
+  font-size: var(--fs-lg);
+  color: var(--text-dim);
+}
+
+/* Key/value stat row. */
+.stat-row,
+.kv {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: 7px 0;
+  font-size: var(--fs-sm);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+}
+.stat-row:last-child,
+.kv:last-child {
+  border-bottom: none;
+}
+.stat-row > :first-child,
+.kv > :first-child {
+  color: var(--text-mute);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--tr-caps);
+  text-transform: uppercase;
+  font-size: var(--fs-xs);
+}
+.stat-row > :last-child,
+.kv > :last-child {
+  color: var(--text);
+  font-weight: var(--fw-black);
+  font-variant-numeric: tabular-nums;
+}
+.delta-up {
+  color: var(--good);
+}
+.delta-down {
+  color: var(--danger);
+}
+
+/* Tooltip: wrap a trigger, put `.tooltip` inside it. */
+.has-tip {
+  position: relative;
+}
+.tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translate(-50%, 4px);
+  min-width: 120px;
+  max-width: 220px;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-sm);
+  background: rgba(10, 13, 25, 0.97);
+  border: 1px solid var(--border-hi);
+  box-shadow: var(--sh-2);
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-snug);
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fast) linear, transform var(--dur-fast) var(--ease-out);
+  z-index: 50;
+}
+.tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border: 5px solid transparent;
+  border-top-color: var(--border-hi);
+}
+.has-tip:hover .tooltip,
+.tooltip.is-open {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* Skeleton placeholder. */
+.skeleton {
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  background-size: 240% 100%;
+  animation: shimmer 1.3s linear infinite;
+  min-height: 14px;
+}
+
+/* Scroll container with fade-out masks at both ends. */
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  mask-image: linear-gradient(180deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+}
+.scroll-x {
+  overflow-x: auto;
+  overflow-y: hidden;
+  display: flex;
+  gap: var(--sp-2);
+  scroll-snap-type: x mandatory;
+}
+.scroll-x > * {
+  scroll-snap-align: start;
+  flex: none;
+}
+
+/* List of rows on a panel. */
+.list {
+  display: flex;
+  flex-direction: column;
+}
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.028);
+  border: 1px solid var(--border);
+  transition: background var(--dur-fast) linear, transform var(--dur-fast) var(--ease-out);
+}
+.list-item + .list-item {
+  margin-top: var(--sp-2);
+}
+.list-item:active {
+  transform: scale(0.99);
+  background: rgba(255, 255, 255, 0.06);
+}
+.list-item.is-selected {
+  border-color: rgba(69, 214, 194, 0.55);
+  box-shadow: var(--glow-accent);
+}
+
+/* Generic card. */
+.card {
+  position: relative;
+  border-radius: var(--radius-lg);
+  background: var(--grad-surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--sh-2), inset 0 1px 0 var(--edge-light);
+  padding: var(--sp-4);
+  overflow: hidden;
+}
+
+/* Toggle switch — used by settings.
+ *   <button class="switch" aria-pressed="true"><span></span></button> */
+.switch {
+  position: relative;
+  width: 52px;
+  height: 30px;
+  flex: none;
+  border-radius: var(--radius-pill);
+  background: var(--grad-sunken);
+  border: 1px solid rgba(0, 0, 0, 0.55);
+  box-shadow: var(--sh-inset);
+  transition: background var(--dur) var(--ease-out), border-color var(--dur) linear;
+}
+.switch > span {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #8f9ac0, #59627f);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  transition: transform var(--dur) var(--ease-back), background var(--dur) linear;
+}
+.switch[aria-pressed='true'] {
+  background: var(--grad-accent);
+  border-color: rgba(142, 244, 229, 0.5);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.35), 0 0 14px var(--accent-glow);
+}
+.switch[aria-pressed='true'] > span {
+  transform: translateX(22px);
+  background: linear-gradient(180deg, #ffffff, #cfe9e4);
+}
+.switch:focus-visible {
+  outline: 2px solid var(--accent-hi);
+  outline-offset: 2px;
+}
+
+/* Settings-style row: label + description + control. */
+.opt-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 52px;
+  padding: var(--sp-2) 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+}
+.opt-row:last-child {
+  border-bottom: none;
+}
+.opt-row .opt-text {
+  flex: 1;
+  min-width: 0;
+}
+.opt-row .opt-title {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  color: var(--text);
+}
+.opt-row .opt-desc {
+  font-size: var(--fs-xs);
+  color: var(--text-mute);
+  line-height: var(--lh-snug);
+}
+
+/* Section label above a group. */
+.section-label {
+  font-family: var(--font-display);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-black);
+  letter-spacing: var(--tr-label);
+  text-transform: uppercase;
+  color: var(--text-faint);
+}

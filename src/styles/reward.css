@@ -1,0 +1,168 @@
+/* ============================================================================
+ * REWARD — the payoff beat. Loud enough to feel like a reward, quick enough
+ * that it never gets in the way of the next run.
+ * ========================================================================== */
+
+.screen-reward {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--grad-page);
+  overflow: hidden;
+}
+
+/* A coloured wash keyed to the best drop, so rarity is felt before it's read. */
+.rw-glow {
+  --rw: var(--accent);
+  position: absolute;
+  inset: -20% -20% auto;
+  height: 70%;
+  pointer-events: none;
+  background: radial-gradient(50% 50% at 50% 40%, color-mix(in srgb, var(--rw) 30%, transparent), transparent 70%);
+  animation: rw-breathe 4s ease-in-out infinite;
+}
+.screen-reward.is-uncommon .rw-glow { --rw: var(--r-uncommon); }
+.screen-reward.is-rare .rw-glow { --rw: var(--r-rare); }
+.screen-reward.is-epic .rw-glow { --rw: var(--r-epic); }
+.screen-reward.is-legendary .rw-glow { --rw: var(--r-legendary); }
+.screen-reward.is-mythic .rw-glow { --rw: var(--r-mythic); }
+.screen-reward.is-boss .rw-glow { --rw: var(--gold); }
+
+.rw-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: calc(var(--safe-top) + var(--sp-6)) var(--sp-4) var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+/* Flex children shrink by default; a tall loot list would otherwise squash
+   the header and the ledger down to nothing. */
+.rw-head,
+.rw-rows,
+.rw-loot,
+.rw-drop { flex: none; }
+
+.rw-head { text-align: center; display: flex; flex-direction: column; gap: var(--sp-1); }
+.rw-icon {
+  font-size: 56px;
+  line-height: 1;
+  filter: drop-shadow(0 6px 20px rgba(0, 0, 0, 0.7));
+  animation: rw-pop 520ms var(--ease-back);
+}
+.rw-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-black);
+  letter-spacing: var(--tr-display);
+  margin: var(--sp-2) 0 0;
+}
+.rw-msg { font-size: var(--fs-sm); color: var(--text-dim); line-height: var(--lh-body); margin: 0; }
+
+/* ------------------------------------------------------------- the ledger -- */
+
+.rw-rows { display: flex; flex-direction: column; padding: var(--sp-1) var(--sp-3); }
+.rw-rows.is-bumped { animation: rw-bump 380ms var(--ease-back); }
+.rw-row {
+  --tone: var(--text-2);
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) 0;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+.rw-row + .rw-row { border-top: 1px solid var(--border); }
+.rw-row i { font-style: normal; font-size: 17px; text-align: center; }
+.rw-row b { font-family: var(--font-num); font-size: var(--fs-lg); color: var(--tone); }
+.rw-row-gold { --tone: var(--gold); }
+.rw-row-xp { --tone: var(--xp-hi); }
+.rw-row-good { --tone: var(--good); }
+.rw-row-accent { --tone: var(--accent); }
+
+/* --------------------------------------------------------------- the drop -- */
+
+.rw-loot { display: flex; flex-direction: column; gap: var(--sp-3); }
+.rw-loot-head {
+  font-size: var(--fs-2xs);
+  letter-spacing: var(--tr-label);
+  text-transform: uppercase;
+  color: var(--text-mute);
+  text-align: center;
+}
+
+.rw-drop {
+  --rc: var(--r-common);
+  position: relative;
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  grid-template-areas: 'tile detail' 'equip equip';
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in srgb, var(--rc) 45%, transparent);
+  background:
+    radial-gradient(120% 90% at 10% 0%, color-mix(in srgb, var(--rc) 14%, transparent), transparent 60%),
+    var(--grad-surface);
+  box-shadow: var(--sh-2);
+  opacity: 0;
+  transform: translateY(18px) scale(0.96);
+  transition: opacity var(--dur-slow) var(--ease-out), transform var(--dur-slow) var(--ease-back);
+}
+.rw-drop.is-in { opacity: 1; transform: none; }
+.rw-drop-tile { grid-area: tile; }
+.rw-drop .item-detail { grid-area: detail; }
+.rw-equip { grid-area: equip; width: 100%; }
+
+/* ------------------------------------------------------------------ foot -- */
+
+.rw-foot {
+  position: relative;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4) calc(var(--safe-bottom) + var(--sp-4));
+  background: linear-gradient(180deg, transparent, var(--bg-0) 30%);
+}
+.rw-foot-row { display: grid; grid-template-columns: auto 1fr; gap: var(--sp-2); }
+
+.rw-double {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+}
+.rw-double i { font-style: normal; font-size: 18px; }
+.rw-double span { display: flex; flex-direction: column; line-height: var(--lh-tight); }
+.rw-double u {
+  text-decoration: none;
+  font-size: var(--fs-2xs);
+  opacity: 0.75;
+  letter-spacing: var(--tr-caps);
+}
+.rw-double.is-spent { opacity: 0.4; }
+
+@keyframes rw-pop {
+  from { opacity: 0; transform: scale(0.4) rotate(-12deg); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes rw-bump {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+@keyframes rw-breathe {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rw-icon, .rw-glow, .rw-rows.is-bumped { animation: none; }
+  .rw-drop { transition: opacity var(--dur) linear; transform: none; }
+}

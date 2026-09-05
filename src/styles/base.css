@@ -1,0 +1,384 @@
+/* ============================================================================
+ * FORWARD — app shell, safe areas, screen transitions, shared primitives.
+ * Owned by the design-system workstream.
+ * ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-void);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-regular);
+  line-height: var(--lh-body);
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ------------------------------------------------------------------ shell -- */
+
+#game-root {
+  position: fixed;
+  inset: 0;
+  max-width: 560px;
+  margin: 0 auto;
+  background: var(--grad-page);
+  overflow: hidden;
+  isolation: isolate;
+  /* A faint vignette keeps the eye centred on portrait phones and hides the
+     hard edge of the letterboxed frame on tablets. */
+  box-shadow: inset 0 0 120px 30px rgba(0, 0, 0, 0.55);
+}
+
+/* Ambient grain over the whole app — kills banding in the big dark gradients. */
+#game-root::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--tex-noise);
+  background-size: 160px 160px;
+  opacity: 0.028;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  z-index: 70;
+}
+
+/* ------------------------------------------------------ screen transitions --
+ * Driven by core/screens.ts: `.is-entering` is applied on mount and removed on
+ * the next frame; `.is-leaving` is applied for TRANSITION_MS (260ms) before
+ * unmount. Both must therefore describe the OFF-SCREEN state.
+ *
+ * The feel we want is a shallow camera push rather than a web page fade: the
+ * incoming screen rises and scales up into place, the outgoing one sinks and
+ * darkens away. */
+
+.screen-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  opacity: 1;
+  transform: none;
+  filter: none;
+  transform-origin: 50% 58%;
+  will-change: opacity, transform;
+  transition:
+    opacity var(--dur-screen) var(--ease-out),
+    transform var(--dur-screen) var(--ease-out),
+    filter var(--dur-screen) var(--ease-out);
+}
+
+.screen-layer.is-entering {
+  opacity: 0;
+  transform: translate3d(0, 18px, 0) scale(0.965);
+  filter: brightness(0.6) saturate(0.7);
+}
+
+.screen-layer.is-leaving {
+  opacity: 0;
+  transform: translate3d(0, -14px, 0) scale(1.035);
+  filter: brightness(0.35) saturate(0.5);
+  pointer-events: none;
+}
+
+/* Combat deserves a harder cut — a quick zoom-in "engage". */
+.screen-layer[data-screen='combat'].is-entering {
+  transform: translate3d(0, 0, 0) scale(1.1);
+  filter: brightness(0.4) saturate(1.4);
+}
+
+/* ----------------------------------------------------------------- screen -- */
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+  z-index: var(--z-content);
+}
+
+/* Standard content column for menu-ish screens. */
+.screen-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+/* Fixed action strip pinned to the bottom of a screen. */
+.screen-foot {
+  flex: none;
+  padding: var(--sp-3) var(--sp-4) calc(var(--sp-3) + var(--safe-bottom));
+  display: flex;
+  gap: var(--sp-2);
+  background: linear-gradient(180deg, rgba(7, 9, 18, 0) 0%, rgba(7, 9, 18, 0.9) 40%, var(--bg-0) 100%);
+  border-top: 1px solid var(--border);
+}
+
+/* --------------------------------------------------------------- elements -- */
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  border: none;
+  background: none;
+}
+
+button {
+  cursor: pointer;
+  padding: 0;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: var(--fw-black);
+  line-height: var(--lh-tight);
+}
+
+canvas {
+  display: block;
+}
+
+::selection {
+  background: var(--accent-dim);
+  color: var(--text);
+}
+
+/* Scrollbars: present but barely there. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-hi) transparent;
+}
+*::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-hi);
+  border-radius: var(--radius-pill);
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* -------------------------------------------------------------- utilities -- */
+
+.hidden {
+  display: none !important;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.spacer {
+  flex: 1;
+}
+.center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.t-center {
+  text-align: center;
+}
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+.tex-noise {
+  background-image: var(--tex-noise);
+  background-size: 160px 160px;
+}
+
+.u-dim {
+  color: var(--text-dim);
+}
+.u-mute {
+  color: var(--text-mute);
+}
+.u-gold {
+  color: var(--gold);
+}
+.u-gem {
+  color: var(--gem);
+}
+.u-good {
+  color: var(--good);
+}
+.u-danger {
+  color: var(--danger);
+}
+.u-accent {
+  color: var(--accent);
+}
+.u-xp {
+  color: var(--xp);
+}
+
+/* Screen-reader-only text (used on icon-only controls). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ----------------------------------------------------------- shared motion -- */
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: -140% 0;
+  }
+  to {
+    background-position: 240% 0;
+  }
+}
+
+@keyframes float-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.anim-rise {
+  animation: rise-in var(--dur-slow) var(--ease-out) both;
+}
+.anim-pop {
+  animation: pop-in var(--dur) var(--ease-back) both;
+}
+/* Stagger helpers for list reveals. */
+.d-1 { animation-delay: 40ms; }
+.d-2 { animation-delay: 90ms; }
+.d-3 { animation-delay: 140ms; }
+.d-4 { animation-delay: 190ms; }
+.d-5 { animation-delay: 240ms; }
+.d-6 { animation-delay: 290ms; }
+
+/* ------------------------------------------------------- reduced motion -- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .screen-layer.is-entering,
+  .screen-layer.is-leaving {
+    transform: none;
+    filter: none;
+  }
+}
+
+/* Player-facing toggle: state.stats.settings.reducedMotion sets this on <html>. */
+html.reduce-motion *,
+html.reduce-motion *::before,
+html.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 60ms !important;
+}
+html.reduce-motion .screen-layer.is-entering,
+html.reduce-motion .screen-layer.is-leaving {
+  transform: none;
+  filter: none;
+}
