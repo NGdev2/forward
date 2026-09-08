@@ -63,6 +63,22 @@
   margin: var(--sp-2) 0 0;
 }
 .rw-msg { font-size: var(--fs-sm); color: var(--text-dim); line-height: var(--lh-body); margin: 0; }
+.rw-next {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  align-self: center;
+  margin: var(--sp-2) 0 0;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(245, 187, 69, 0.4);
+  background: rgba(245, 187, 69, 0.1);
+  font-size: var(--fs-xs);
+  color: var(--text-2);
+}
+.rw-next i { font-style: normal; }
+.rw-next b { color: var(--gold-hi); }
 
 /* ------------------------------------------------------------- the ledger -- */
 
@@ -102,7 +118,7 @@
   position: relative;
   display: grid;
   grid-template-columns: 76px 1fr;
-  grid-template-areas: 'tile detail' 'equip equip';
+  grid-template-areas: 'tile detail' 'set set' 'equip equip';
   gap: var(--sp-3);
   padding: var(--sp-3);
   border-radius: var(--radius-lg);
@@ -119,6 +135,22 @@
 .rw-drop-tile { grid-area: tile; }
 .rw-drop .item-detail { grid-area: detail; }
 .rw-equip { grid-area: equip; width: 100%; }
+.rw-set {
+  --el: var(--accent);
+  --el-soft: var(--accent-glow);
+  grid-area: set;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  padding: 6px var(--sp-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--el) 45%, transparent);
+  background: var(--el-soft);
+  font-size: var(--fs-xs);
+}
+.rw-set b { color: var(--el); }
+.rw-set em { font-style: normal; margin-left: auto; font-family: var(--font-num); color: var(--text-2); }
 
 /* ------------------------------------------------------------------ foot -- */
 

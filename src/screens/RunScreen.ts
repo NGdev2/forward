@@ -10,6 +10,7 @@ import {
 import { pickBoss } from '../game/data/bosses';
 import { biomeFor } from './run/biomes';
 import { RunScene } from './run/scene';
+import { field as cfield, name as cname, t } from '../i18n';
 
 /* ============================================================================
  * The run screen: you are travelling down a road and you can SEE what is
@@ -20,6 +21,9 @@ import { RunScene } from './run/scene';
 
 const SPAWN_DELAY = 0.9;
 const ARRIVE_HOLD = 0.42;
+
+/** Biome shown on the previous visit, so entering new country gets a toast. */
+let lastBiomeId: string | null = null;
 
 export class RunScreen implements Screen {
   readonly id = 'run' as const;
@@ -35,6 +39,7 @@ export class RunScreen implements Screen {
   private spawnIn = SPAWN_DELAY;
   private navigating = false;
   private hudDirty = true;
+  private wasChoosing = false;
 
   // Cached HUD nodes.
   private q!: (sel: string) => HTMLElement;
@@ -49,13 +54,14 @@ export class RunScreen implements Screen {
     this.spawnIn = SPAWN_DELAY;
     this.navigating = false;
     this.hudDirty = true;
+    this.wasChoosing = false;
     this.lastGold = -1;
     this.lastHp = -1;
     const biome = biomeFor(ctx.state.stats.worldCycle);
 
     const el = document.createElement('div');
     el.className = 'screen screen-run';
-    el.innerHTML = this.template(biome.name);
+    el.innerHTML = this.template(cname('biome', biome.id, biome.name));
     root.appendChild(el);
     this.el = el;
     this.q = (sel: string) => el.querySelector(sel) as HTMLElement;
@@ -90,8 +96,27 @@ export class RunScreen implements Screen {
     this.canvas.addEventListener('pointerdown', onTap);
     this.cleanups.push(() => this.canvas.removeEventListener('pointerdown', onTap));
 
-    this.bind('.run-bag', () => ctx.goto('inventory'));
-    this.bind('.run-shop', () => ctx.goto('shop'));
+    // The trader is only reached from the road (the Trader lane), so there is
+    // deliberately no shop button up here — just the bag.
+    this.bind('.run-bag', () => ctx.goto('inventory', { from: 'run' }));
+
+    ctx.music.setMode('run');
+
+    // New country: say where we are, once per biome change.
+    if (lastBiomeId !== biome.id) {
+      const first = lastBiomeId === null;
+      lastBiomeId = biome.id;
+      this.timers.push(
+        window.setTimeout(
+          () =>
+            ctx.toast(
+              t('run.biome_toast', { name: cname('biome', biome.id, biome.name), flavor: cfield('biome', biome.id, 'flavor', biome.flavor) }),
+              'info'
+            ),
+          first ? 500 : 250
+        )
+      );
+    }
 
     // Immediately show the boss if the bar is already full.
     if (ctx.state.isBossReady()) {
@@ -117,26 +142,28 @@ export class RunScreen implements Screen {
             <span class="chip run-gems"><i>💎</i><b>0</b></span>
           </div>
           <div class="run-actions">
-            <button class="icon-btn btn btn-ghost run-bag" aria-label="Bag">🎒</button>
-            <button class="icon-btn btn btn-ghost run-shop" aria-label="Shop">🏪</button>
+            <button class="icon-btn btn btn-ghost run-bag" aria-label="${esc(t('common.bag'))}">🎒</button>
           </div>
         </div>
         <div class="run-boss">
-          <div class="run-boss-label"><span class="run-boss-name">ROAD AHEAD</span><span class="run-boss-count">0/0</span></div>
+          <div class="run-boss-label"><span class="run-boss-name">${esc(t('run.road_ahead'))}</span><span class="run-boss-count">0/0</span></div>
           <div class="run-boss-bar bar bar-boss"><i class="bar-fill"></i></div>
         </div>
         <div class="run-mid">
-          <span class="run-biome">${biomeName}</span>
+          <span class="run-biome">${esc(biomeName)}</span>
         </div>
         <div class="run-bottom">
           <span class="chip run-dist">0 m</span>
-          <span class="run-hint">Tap a lane</span>
+          <span class="run-choose">
+            <span class="run-timer" aria-hidden="true"><i></i></span>
+            <span class="run-hint">${esc(t('run.tap_lane'))}</span>
+          </span>
         </div>
         <div class="run-lanes" aria-hidden="true">
           <div class="run-lane"></div><div class="run-lane"></div><div class="run-lane"></div>
         </div>
       </div>
-      <div class="run-boss-warn"><span>THE ROAD IS BLOCKED</span></div>
+      <div class="run-boss-warn"><span>${esc(t('run.blocked'))}</span></div>
     `;
   }
 
@@ -160,19 +187,20 @@ export class RunScreen implements Screen {
     const boss = pickBoss(this.ctx.state.stats.worldCycle, this.ctx.state.stats.level);
     node.enemy = boss;
     node.title = boss.name;
-    node.subtitle = boss.title ?? 'Blocks the road';
+    node.subtitle = boss.title ?? t('run.boss_blocks');
     this.scene.spawnBoss(node);
     this.ctx.audio.play('boss');
+    this.ctx.music.setMode('boss');
     this.el.classList.add('is-boss');
     const warn = this.q('.run-boss-warn');
     warn.classList.add('is-on');
     this.timers.push(window.setTimeout(() => warn.classList.remove('is-on'), 2200));
-    this.q('.run-hint').textContent = 'No way around it';
+    this.q('.run-hint').textContent = t('run.no_way_around');
   }
 
   private onCommit(node: RunEncounter) {
     rememberChoice(node.kind);
-    this.q('.run-hint').textContent = `→ ${node.title}`;
+    this.q('.run-hint').textContent = t('run.heading', { title: node.title });
     this.el.classList.add('is-committed');
   }
 
@@ -228,13 +256,13 @@ export class RunScreen implements Screen {
     };
     switch (node.kind) {
       case 'gold':
-        return { ...base, icon: '💰', message: 'You scoop it up without breaking stride.' };
+        return { ...base, icon: '💰', message: t('run.msg_gold') };
       case 'treasure':
-        return { ...base, icon: '🧰', message: 'The lid gives way.' };
+        return { ...base, icon: '🧰', message: t('run.msg_treasure') };
       case 'rest':
-        return { ...base, icon: '🏕️', message: 'A few minutes by the fire. It is enough.' };
+        return { ...base, icon: '🏕️', message: t('run.msg_rest') };
       case 'shrine':
-        return { ...base, icon: '🔮', message: 'The shrine takes its due, and pays.' };
+        return { ...base, icon: '🔮', message: t('run.msg_shrine') };
       default:
         return base;
     }
@@ -265,7 +293,7 @@ export class RunScreen implements Screen {
     const st = this.ctx.state;
 
     // Distance ticks every frame; the rest only when it actually changes.
-    this.q('.run-dist').textContent = `${Math.floor(s.distance)} m`;
+    this.q('.run-dist').textContent = t('common.meters', { n: Math.floor(s.distance) });
 
     if (force || this.hudDirty || s.gold !== this.lastGold || s.hp !== this.lastHp) {
       this.lastGold = s.gold;
@@ -283,14 +311,21 @@ export class RunScreen implements Screen {
       fill(this.q('.run-boss-bar'), s.progress / Math.max(1, s.progressMax));
       this.q('.run-boss-count').textContent = `${s.progress}/${s.progressMax}`;
       this.q('.run-boss-name').textContent =
-        left === 0 ? 'BOSS AHEAD' : left === 1 ? 'BOSS NEXT' : `BOSS IN ${left}`;
+        left === 0 ? t('run.boss_ahead') : left === 1 ? t('run.boss_next') : t('run.boss_in', { n: left });
       this.el.classList.toggle('is-boss-near', left <= 1);
     }
 
-    // Choice timer.
-    const bar = this.el;
-    if (this.scene.canChoose) {
-      bar.style.setProperty('--choose', String(this.scene.chooseLeft / this.scene.chooseWindow));
+    // Choice timer ring: only visible while a choice is open.
+    const choosing = this.scene.canChoose;
+    if (choosing !== this.wasChoosing) {
+      this.wasChoosing = choosing;
+      this.el.classList.toggle('is-choosing', choosing);
+      if (choosing) this.el.classList.remove('is-committed');
+    }
+    if (choosing) {
+      const frac = this.scene.chooseLeft / Math.max(0.001, this.scene.chooseWindow);
+      this.el.style.setProperty('--choose', String(frac));
+      this.el.classList.toggle('is-choose-late', frac < 0.3);
     }
   }
 
@@ -305,6 +340,10 @@ export class RunScreen implements Screen {
     this.el.remove();
     void runMemory();
   }
+}
+
+function esc(s: string): string {
+  return s.replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]!);
 }
 
 function fill(bar: HTMLElement, frac: number) {

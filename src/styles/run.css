@@ -232,6 +232,45 @@
   gap: var(--sp-2, 8px);
 }
 
+.run-choose {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Choose-timer ring: a conic wedge that empties as the window closes.
+   `--choose` is 1..0 and is written by the screen every frame. */
+.run-timer {
+  --choose: 1;
+  position: relative;
+  display: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--accent-hi, #7ff0dd) calc(var(--choose) * 360deg),
+    rgba(255, 255, 255, 0.14) 0
+  );
+  box-shadow: 0 0 10px rgba(127, 240, 221, 0.35);
+}
+.run-timer i {
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: rgba(9, 11, 22, 0.85);
+}
+.screen-run.is-choosing .run-timer {
+  display: block;
+}
+.screen-run.is-choose-late .run-timer {
+  background: conic-gradient(
+    var(--danger, #ff4d6d) calc(var(--choose) * 360deg),
+    rgba(255, 255, 255, 0.14) 0
+  );
+  box-shadow: 0 0 10px rgba(255, 77, 109, 0.45);
+  animation: run-throb 0.5s ease-in-out infinite;
+}
+
 .run-hint {
   font-size: var(--fs-sm, 12px);
   font-weight: 700;

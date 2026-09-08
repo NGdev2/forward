@@ -124,6 +124,22 @@
   --r-mythic-deep: #8c1430;
   --r-mythic-glow: rgba(255, 77, 109, 0.6);
 
+  /* -------------------------------------------------------------- elements --
+   * Relic-set elements (data/items.ts SetElement). Used for set badges, the
+   * unlocked-bonus highlight in the collection view and combat trails. */
+  --el-beast: #d9a066;
+  --el-beast-soft: rgba(217, 160, 102, 0.16);
+  --el-metal: #b8c4d8;
+  --el-metal-soft: rgba(184, 196, 216, 0.16);
+  --el-fire: #ff7a45;
+  --el-fire-soft: rgba(255, 122, 69, 0.18);
+  --el-water: #4fc3f7;
+  --el-water-soft: rgba(79, 195, 247, 0.18);
+  --el-void: #b07cff;
+  --el-void-soft: rgba(176, 124, 255, 0.2);
+  --el-holy: #ffe08a;
+  --el-holy-soft: rgba(255, 224, 138, 0.18);
+
   /* ------------------------------------------------------------ gradients --
    * Flat fills are what made the old build look cheap. Prefer these. */
   --grad-surface: linear-gradient(170deg, #1e2643 0%, #141a2e 46%, #10152a 100%);
@@ -135,6 +151,20 @@
   --grad-accent: linear-gradient(165deg, #6ef0dd 0%, #33bfae 48%, #1a8a7e 100%);
   --grad-gold: linear-gradient(165deg, #ffdf94 0%, #f0ab2e 48%, #a86b13 100%);
   --grad-danger: linear-gradient(165deg, #ff8098 0%, #ef3355 48%, #93132f 100%);
+
+  /* Title logo: brushed gold with a dark carved extrusion. */
+  --grad-logo: linear-gradient(
+    180deg,
+    #fff6dd 0%,
+    #ffd88a 26%,
+    #f0ab2e 52%,
+    #b06f14 68%,
+    #f6cd7a 86%,
+    #ffeec4 100%
+  );
+  --logo-ink: #1b1206;
+  --logo-glow: rgba(247, 168, 58, 0.22);
+  --logo-glow-hi: rgba(247, 168, 58, 0.42);
 
   --grad-hp: linear-gradient(180deg, #ff8f7a 0%, #f0453f 55%, #a71430 100%);
   --grad-xp: linear-gradient(180deg, #c1b4ff 0%, #8a72ff 55%, #4a34b8 100%);

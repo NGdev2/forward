@@ -1,6 +1,7 @@
 import type { Danger, EncounterNode, EnemyInstance, NodeKind, Rarity } from './types';
 import type { GameState } from './state';
 import { pickEnemy } from './data/enemies';
+import { desc as cdesc, name as cname, t } from '../i18n';
 
 /* ============================================================================
  * Lane generation for the run screen.
@@ -69,6 +70,13 @@ export interface RunMemory {
   /** Consecutive fights dodged — makes safe lanes progressively stingier. */
   cowardStreak: number;
   nodesSeen: number;
+  /**
+   * Nodes of kindness left after a boss loss (more campfires and traders, fewer
+   * elites). Set by `noteBossLoss()` or detected from `state.stats.bossesLost`.
+   */
+  afterBossLoss: number;
+  /** Last `bossesLost` value seen, so the counter fires once per new loss (-1 = unknown yet). */
+  seenBossLosses: number;
 }
 
 export function freshMemory(): RunMemory {
@@ -79,7 +87,9 @@ export function freshMemory(): RunMemory {
     sinceElite: 0,
     fightStreak: 0,
     cowardStreak: 0,
-    nodesSeen: 0
+    nodesSeen: 0,
+    afterBossLoss: 0,
+    seenBossLosses: -1
   };
 }
 
@@ -93,8 +103,19 @@ export function resetRunMemory() {
   memory = freshMemory();
 }
 
+/**
+ * Called after a boss loss (the screen calls `state.onBossLost()` for the bar;
+ * this one is optional — `generateChoices` also notices a new loss on its own
+ * from `state.stats.bossesLost`). The next two stretches of road are kinder:
+ * campfires and traders show up more, elites less.
+ */
+export function noteBossLoss() {
+  memory.afterBossLoss = 2;
+}
+
 /** Called by the run screen once the player commits to a lane. */
 export function rememberChoice(kind: NodeKind) {
+  if (memory.afterBossLoss > 0) memory.afterBossLoss -= 1;
   memory.history.push(kind);
   if (memory.history.length > 12) memory.history.shift();
   memory.nodesSeen += 1;
@@ -118,16 +139,21 @@ function contextWeight(def: KindDef, state: GameState): number {
   const toBoss = s.progressMax - s.progress;
   let w = def.weight;
 
+  // Fresh off a boss loss the road eases up for a couple of nodes.
+  const kinder = memory.afterBossLoss > 0;
+
   switch (def.kind) {
     case 'rest':
       // Wounded runners see far more campfires; healthy ones almost none.
       w *= hpFrac < 0.35 ? 3.4 : hpFrac < 0.7 ? 1.5 : 0.45;
       if (memory.sinceRest > 6) w *= 2;
+      if (kinder) w *= 2.5;
       break;
     case 'shop':
       w *= s.gold > 120 ? 1.5 : 0.5;
       if (memory.sinceShop > 8) w *= 2.4;
       if (state.bagFull) w *= 1.8;
+      if (kinder) w *= 2.2;
       break;
     case 'treasure':
       // Nothing to gain from loot you can't carry.
@@ -141,6 +167,7 @@ function contextWeight(def: KindDef, state: GameState): number {
     case 'elite':
       w *= hpFrac < 0.45 ? 0.35 : 1;
       if (memory.sinceElite > 7) w *= 1.8;
+      if (kinder) w *= 0.4;
       // One step before the boss, elites are the last big power spike.
       if (toBoss <= 1) w *= 1.5;
       break;
@@ -187,8 +214,8 @@ function dress(def: KindDef, lane: number, state: GameState): RunEncounter {
   const node: RunEncounter = {
     kind: def.kind,
     icon: def.icon,
-    title: def.title,
-    subtitle: def.subtitle,
+    title: cname('encounter', def.kind, def.title),
+    subtitle: cdesc('encounter', def.kind, def.subtitle),
     danger: def.danger,
     lane,
     rewardHint: ''
@@ -200,12 +227,12 @@ function dress(def: KindDef, lane: number, state: GameState): RunEncounter {
       node.enemy = enemy;
       node.title = enemy.name;
       node.icon = enemy.icon;
-      node.subtitle = `${enemy.maxHp} HP · ${enemy.atk} ATK`;
-      node.rewardHint = `+${enemy.xpReward} XP · ${enemy.goldReward}g`;
+      node.subtitle = t('encounter.stats', { hp: enemy.maxHp, atk: enemy.atk });
+      node.rewardHint = t('encounter.hint_fight', { xp: enemy.xpReward, gold: enemy.goldReward });
       // Danger scales with how hard the enemy hits relative to your HP.
       const threat = enemy.atk / Math.max(1, state.derived.def + 4);
       node.danger = threat > 2.4 ? 2 : 1;
-      if (memory.cowardStreak >= 3) node.tag = 'BLOOD DEBT';
+      if (memory.cowardStreak >= 3) node.tag = t('encounter.tag_blood');
       break;
     }
     case 'elite': {
@@ -213,18 +240,18 @@ function dress(def: KindDef, lane: number, state: GameState): RunEncounter {
       node.enemy = enemy;
       node.title = enemy.name;
       node.icon = '☠️';
-      node.subtitle = `${enemy.maxHp} HP · ${enemy.atk} ATK`;
-      node.rewardHint = `Rare drop · ${enemy.goldReward}g`;
+      node.subtitle = t('encounter.stats', { hp: enemy.maxHp, atk: enemy.atk });
+      node.rewardHint = t('encounter.hint_elite', { gold: enemy.goldReward });
       node.danger = 3;
-      node.tag = 'RISK';
+      node.tag = t('encounter.tag_risk');
       break;
     }
     case 'gold': {
       const gold = Math.round(base * rnd(1.1, 1.9));
       node.gold = gold;
       node.xp = Math.round(base * 0.15);
-      node.rewardHint = `+${gold}g`;
-      node.tag = 'SAFE';
+      node.rewardHint = t('encounter.hint_gold', { gold });
+      node.tag = t('encounter.tag_safe');
       break;
     }
     case 'treasure': {
@@ -234,19 +261,19 @@ function dress(def: KindDef, lane: number, state: GameState): RunEncounter {
       node.xp = Math.round(base * 0.2);
       if (rich) {
         node.lootRarity = 'rare';
-        node.title = 'Gilded Chest';
-        node.rewardHint = '2 items · rare+';
-        node.tag = 'RARE';
+        node.title = t('encounter.gilded_chest');
+        node.rewardHint = t('encounter.hint_two_rare');
+        node.tag = t('encounter.tag_rare');
       } else {
-        node.rewardHint = '1 item';
+        node.rewardHint = t('encounter.hint_one_item');
       }
       break;
     }
     case 'rest': {
       const frac = 0.4 + Math.random() * 0.2;
       node.heal = Math.round(state.maxHp * frac);
-      node.rewardHint = `Heal ${Math.round(frac * 100)}%`;
-      node.tag = 'SAFE';
+      node.rewardHint = t('encounter.hint_heal', { pct: Math.round(frac * 100) });
+      node.tag = t('encounter.tag_safe');
       break;
     }
     case 'shrine': {
@@ -255,19 +282,19 @@ function dress(def: KindDef, lane: number, state: GameState): RunEncounter {
       node.gold = gold;
       node.xp = Math.round(base * 0.9);
       node.lootCount = Math.random() < 0.4 ? 1 : 0;
-      node.subtitle = 'Offer blood for fortune';
-      node.rewardHint = `${gold}g · big XP`;
+      node.subtitle = t('encounter.shrine_sub');
+      node.rewardHint = t('encounter.hint_shrine', { gold });
       node.danger = 1;
       break;
     }
     case 'shop': {
-      node.rewardHint = 'Buy · sell · repair';
-      node.tag = 'SAFE';
+      node.rewardHint = t('encounter.hint_shop');
+      node.tag = t('encounter.tag_safe');
       break;
     }
     case 'mystery': {
       node.rewardHint = '???';
-      node.subtitle = 'Half of these bite';
+      node.subtitle = t('encounter.mystery_sub');
       node.danger = 2;
       break;
     }
@@ -285,6 +312,13 @@ function dress(def: KindDef, lane: number, state: GameState): RunEncounter {
  * player is always trading safety against reward rather than guessing.
  */
 export function generateChoices(state: GameState): RunEncounter[] {
+  // Notice a boss loss even if nobody called noteBossLoss().
+  const lost = state.stats.bossesLost ?? 0;
+  if (memory.seenBossLosses < 0) memory.seenBossLosses = lost;
+  else if (lost > memory.seenBossLosses) {
+    memory.seenBossLosses = lost;
+    memory.afterBossLoss = 2;
+  }
   const level = state.stats.level;
   const available = KINDS.filter(k => k.minLevel <= level);
   const used: NodeKind[] = [];
@@ -337,11 +371,11 @@ export function resolveMystery(state: GameState): RunEncounter {
     return {
       kind: enemy.isElite ? 'elite' : 'battle',
       icon: enemy.icon,
-      title: 'Ambush!',
+      title: t('encounter.ambush'),
       subtitle: enemy.name,
       danger: 3,
       lane: 1,
-      rewardHint: `+${enemy.xpReward} XP`,
+      rewardHint: t('encounter.hint_xp', { xp: enemy.xpReward }),
       enemy
     };
   }
@@ -350,11 +384,11 @@ export function resolveMystery(state: GameState): RunEncounter {
     return {
       kind: 'gold',
       icon: '💎',
-      title: 'Buried Hoard',
-      subtitle: 'The unknown paid out',
+      title: t('encounter.hoard'),
+      subtitle: t('encounter.hoard_sub'),
       danger: 0,
       lane: 1,
-      rewardHint: `+${gold}g`,
+      rewardHint: t('encounter.hint_gold', { gold }),
       gold,
       xp: Math.round(base * 0.4)
     };
@@ -363,11 +397,11 @@ export function resolveMystery(state: GameState): RunEncounter {
     return {
       kind: 'treasure',
       icon: '🎁',
-      title: 'Strange Cache',
-      subtitle: 'Wrapped in old cloth',
+      title: t('encounter.cache'),
+      subtitle: t('encounter.cache_sub'),
       danger: 0,
       lane: 1,
-      rewardHint: '2 items',
+      rewardHint: t('encounter.hint_two_items'),
       lootCount: 2,
       xp: Math.round(base * 0.3)
     };
@@ -375,11 +409,11 @@ export function resolveMystery(state: GameState): RunEncounter {
   return {
     kind: 'rest',
     icon: '⛲',
-    title: 'Hidden Spring',
-    subtitle: 'Clean water, for once',
+    title: t('encounter.spring'),
+    subtitle: t('encounter.spring_sub'),
     danger: 0,
     lane: 1,
-    rewardHint: 'Full heal',
+    rewardHint: t('encounter.hint_full_heal'),
     heal: state.maxHp,
     xp: Math.round(base * 0.2)
   };
@@ -389,11 +423,11 @@ export function bossNode(): RunEncounter {
   return {
     kind: 'boss',
     icon: '👑',
-    title: 'The road is blocked',
-    subtitle: 'No lane leads around this',
+    title: t('encounter.boss_title'),
+    subtitle: t('encounter.boss_sub'),
     danger: 3,
     lane: 1,
-    rewardHint: 'Guaranteed drop',
-    tag: 'BOSS'
+    rewardHint: t('encounter.hint_boss'),
+    tag: t('encounter.tag_boss')
   };
 }

@@ -1,33 +1,49 @@
 import type { BossBase, EnemyInstance } from '../types';
 import type { StatusApplication } from './abilities';
-import type { Archetype, EnemyMove } from './enemies';
+import { field as cfield, name as cname, t } from '../../i18n';
+import { nominalAtk, nominalDef, nominalGold, nominalHp, nominalXp, type Archetype, type EnemyMove } from './enemies';
 
+/**
+ * Boss roster. `hpMult`/`atkMult` are RELATIVE to the level-nominal boss
+ * (see pickBoss): 1.0 is a standard boss, tanks trade attack for HP, glass
+ * casters the reverse. Later bosses creep upward because they are also the
+ * higher-rank loop. `goldMult`/`xpMult` are relative to the nominal boss reward.
+ * `ability` is flavour on bosses (their scripts carry the mechanics); the
+ * engine only applies elite abilities to elites.
+ */
 export const BOSS_BASES: BossBase[] = [
-  { id: 'b_ratking', name: 'Ratking', title: 'Lord of the Sewers', icon: '👑🐀', hpMult: 3.2, atkMult: 1.6, goldMult: 4, xpMult: 4, guaranteedRarity: 'uncommon', flavor: 'A pile of rats wearing a crown of bones.' },
-  { id: 'b_goblinchief', name: 'Grubnash', title: 'the Goblin Chief', icon: '👺', hpMult: 3.6, atkMult: 1.7, goldMult: 4.5, xpMult: 4.5, guaranteedRarity: 'rare', flavor: 'Commands every goblin in the warrens.' },
-  { id: 'b_directwolf', name: 'Fenrik', title: 'the Direwolf', icon: '🐺', hpMult: 4.0, atkMult: 1.9, goldMult: 5, xpMult: 5, guaranteedRarity: 'rare', flavor: 'Runs faster than the road itself.' },
-  { id: 'b_orcwarlord', name: 'Grommash', title: 'the Warlord', icon: '👹', hpMult: 4.5, atkMult: 2.0, goldMult: 5.5, xpMult: 5.5, guaranteedRarity: 'epic', flavor: 'Broke a hundred shields with his bare fists.' },
-  { id: 'b_wraithqueen', name: 'Morwen', title: 'the Wraith Queen', icon: '👻', hpMult: 5.0, atkMult: 2.2, goldMult: 6, xpMult: 6, guaranteedRarity: 'epic', flavor: 'Feeds on the light of the road ahead.' },
-  { id: 'b_stonetitan', name: 'Gravemaw', title: 'the Stone Titan', icon: '🗿', hpMult: 5.6, atkMult: 2.4, goldMult: 7, xpMult: 7, guaranteedRarity: 'epic', flavor: 'Every step it takes cracks the ground.' },
-  { id: 'b_wyvernlord', name: 'Skarrix', title: 'the Wyvern Lord', icon: '🐲', hpMult: 6.2, atkMult: 2.6, goldMult: 8, xpMult: 8, guaranteedRarity: 'legendary', flavor: 'Circles above before it dives.' },
-  { id: 'b_lich', name: 'Azharok', title: 'the Undying', icon: '🧙‍♂️', hpMult: 7.0, atkMult: 2.9, goldMult: 9, xpMult: 9, guaranteedRarity: 'legendary', flavor: 'Has died before. Remembers it.', ability: 'lifesteal' },
-  { id: 'b_hydra', name: 'Vaskarra', title: 'the Nine-Headed', icon: '🐍', hpMult: 8.0, atkMult: 3.2, goldMult: 10, xpMult: 10, guaranteedRarity: 'legendary', flavor: 'Cut one head and two more count the loss.', ability: 'enrage' },
-  { id: 'b_voidherald', name: 'Nyxareth', title: 'Herald of the Void', icon: '🌌', hpMult: 9.5, atkMult: 3.6, goldMult: 12, xpMult: 12, guaranteedRarity: 'mythic', flavor: 'The road ends where it stands, then continues anyway.', ability: 'reflect' },
-  { id: 'b_thornqueen', name: 'Ysolde', title: 'the Thornqueen', icon: '🥀', hpMult: 11.0, atkMult: 3.9, goldMult: 13, xpMult: 13, guaranteedRarity: 'legendary', flavor: 'Her garden grows only in salted soil.', ability: 'reflect' },
-  { id: 'b_juggernaut', name: 'Juggernaut Prime', title: 'the Iron Vanguard', icon: '🤖', hpMult: 12.0, atkMult: 4.2, goldMult: 14, xpMult: 14, guaranteedRarity: 'legendary', flavor: 'Built to end wars, kept around to start them.', ability: 'enrage' },
-  { id: 'b_stormcaller', name: 'Kaelen', title: 'the Stormcaller', icon: '⛈️', hpMult: 13.0, atkMult: 4.5, goldMult: 15, xpMult: 15, guaranteedRarity: 'legendary', flavor: 'Thunder answers before he even speaks.' },
-  { id: 'b_abysslord', name: 'Mordreth', title: 'the Abysslord', icon: '🕳️', hpMult: 14.2, atkMult: 4.8, goldMult: 16.5, xpMult: 16.5, guaranteedRarity: 'mythic', flavor: 'Something down there finally noticed the road.', ability: 'lifesteal' },
-  { id: 'b_frostmonarch', name: 'Sythera', title: 'the Frost Monarch', icon: '🥶', hpMult: 15.5, atkMult: 5.1, goldMult: 18, xpMult: 18, guaranteedRarity: 'mythic', flavor: 'Her throne is the last warm place for a hundred miles.' },
-  { id: 'b_bloodreaver', name: 'Karn', title: 'the Bloodreaver', icon: '🩸', hpMult: 17.0, atkMult: 5.4, goldMult: 19.5, xpMult: 19.5, guaranteedRarity: 'mythic', flavor: 'Counts his kills by the color of his blade.', ability: 'lifesteal' },
-  { id: 'b_starweaver', name: 'Alune', title: 'the Starweaver', icon: '🌠', hpMult: 18.5, atkMult: 5.8, goldMult: 21, xpMult: 21, guaranteedRarity: 'mythic', flavor: 'Stitches fate from threads no one else can see.', ability: 'reflect' },
-  { id: 'b_worldeater', name: 'Chthon', title: 'the World Eater', icon: '🌋', hpMult: 20.0, atkMult: 6.2, goldMult: 23, xpMult: 23, guaranteedRarity: 'mythic', flavor: 'Has swallowed kingdoms whole and remembers none of them.', ability: 'enrage' },
-  { id: 'b_timeless', name: 'The Timeless One', title: 'Who Waits Beyond the Road', icon: '⏳', hpMult: 22.0, atkMult: 6.6, goldMult: 25, xpMult: 25, guaranteedRarity: 'mythic', flavor: 'It has already seen how this fight ends.', ability: 'reflect' },
-  { id: 'b_omegasovereign', name: 'Null', title: 'the Omega Sovereign', icon: '♾️', hpMult: 24.0, atkMult: 7.0, goldMult: 28, xpMult: 28, guaranteedRarity: 'mythic', flavor: 'The last boss before the road loops on itself.', ability: 'enrage' }
+  { id: 'b_ratking', name: 'Ratking', title: 'Lord of the Sewers', icon: '👑🐀', hpMult: 0.9, atkMult: 0.9, goldMult: 1, xpMult: 1, guaranteedRarity: 'uncommon', flavor: 'A pile of rats wearing a crown of bones.' },
+  { id: 'b_goblinchief', name: 'Grubnash', title: 'the Goblin Chief', icon: '👺', hpMult: 1, atkMult: 1.4, goldMult: 1.05, xpMult: 1.05, guaranteedRarity: 'rare', flavor: 'Commands every goblin in the warrens.' },
+  { id: 'b_directwolf', name: 'Fenrik', title: 'the Direwolf', icon: '🐺', hpMult: 1.1, atkMult: 1.1, goldMult: 1.1, xpMult: 1.1, guaranteedRarity: 'rare', flavor: 'Runs faster than the road itself.' },
+  { id: 'b_orcwarlord', name: 'Grommash', title: 'the Warlord', icon: '👹', hpMult: 1.15, atkMult: 1.25, goldMult: 1.15, xpMult: 1.15, guaranteedRarity: 'epic', flavor: 'Broke a hundred shields with his bare fists.' },
+  { id: 'b_wraithqueen', name: 'Morwen', title: 'the Wraith Queen', icon: '👻', hpMult: 1.15, atkMult: 1.35, goldMult: 1.2, xpMult: 1.2, guaranteedRarity: 'epic', flavor: 'Feeds on the light of the road ahead.' },
+  { id: 'b_stonetitan', name: 'Gravemaw', title: 'the Stone Titan', icon: '🗿', hpMult: 1.05, atkMult: 1.05, goldMult: 1.25, xpMult: 1.25, guaranteedRarity: 'epic', flavor: 'Every step it takes cracks the ground.' },
+  { id: 'b_wyvernlord', name: 'Skarrix', title: 'the Wyvern Lord', icon: '🐲', hpMult: 1.15, atkMult: 1.05, goldMult: 1.3, xpMult: 1.3, guaranteedRarity: 'legendary', flavor: 'Circles above before it dives.' },
+  { id: 'b_lich', name: 'Azharok', title: 'the Undying', icon: '🧙‍♂️', hpMult: 0.95, atkMult: 1.3, goldMult: 1.35, xpMult: 1.35, guaranteedRarity: 'legendary', flavor: 'Has died before. Remembers it.', ability: 'lifesteal' },
+  { id: 'b_hydra', name: 'Vaskarra', title: 'the Nine-Headed', icon: '🐍', hpMult: 1.05, atkMult: 0.95, goldMult: 1.4, xpMult: 1.4, guaranteedRarity: 'legendary', flavor: 'Cut one head and two more count the loss.', ability: 'enrage' },
+  { id: 'b_voidherald', name: 'Nyxareth', title: 'Herald of the Void', icon: '🌌', hpMult: 1.3, atkMult: 1.25, goldMult: 1.5, xpMult: 1.5, guaranteedRarity: 'mythic', flavor: 'The road ends where it stands, then continues anyway.', ability: 'reflect' },
+  { id: 'b_thornqueen', name: 'Ysolde', title: 'the Thornqueen', icon: '🥀', hpMult: 1.1, atkMult: 0.95, goldMult: 1.5, xpMult: 1.5, guaranteedRarity: 'legendary', flavor: 'Her garden grows only in salted soil.', ability: 'reflect' },
+  { id: 'b_juggernaut', name: 'Juggernaut Prime', title: 'the Iron Vanguard', icon: '🤖', hpMult: 1.25, atkMult: 1.25, goldMult: 1.55, xpMult: 1.55, guaranteedRarity: 'legendary', flavor: 'Built to end wars, kept around to start them.', ability: 'enrage' },
+  { id: 'b_stormcaller', name: 'Kaelen', title: 'the Stormcaller', icon: '⛈️', hpMult: 0.9, atkMult: 1.05, goldMult: 1.6, xpMult: 1.6, guaranteedRarity: 'legendary', flavor: 'Thunder answers before he even speaks.' },
+  { id: 'b_abysslord', name: 'Mordreth', title: 'the Abysslord', icon: '🕳️', hpMult: 1.1, atkMult: 1.1, goldMult: 1.65, xpMult: 1.65, guaranteedRarity: 'mythic', flavor: 'Something down there finally noticed the road.', ability: 'lifesteal' },
+  { id: 'b_frostmonarch', name: 'Sythera', title: 'the Frost Monarch', icon: '🥶', hpMult: 1.25, atkMult: 1.2, goldMult: 1.7, xpMult: 1.7, guaranteedRarity: 'mythic', flavor: 'Her throne is the last warm place for a hundred miles.' },
+  { id: 'b_bloodreaver', name: 'Karn', title: 'the Bloodreaver', icon: '🩸', hpMult: 1.05, atkMult: 0.95, goldMult: 1.75, xpMult: 1.75, guaranteedRarity: 'mythic', flavor: 'Counts his kills by the color of his blade.', ability: 'lifesteal' },
+  { id: 'b_starweaver', name: 'Alune', title: 'the Starweaver', icon: '🌠', hpMult: 1.2, atkMult: 1.4, goldMult: 1.8, xpMult: 1.8, guaranteedRarity: 'mythic', flavor: 'Stitches fate from threads no one else can see.', ability: 'reflect' },
+  { id: 'b_worldeater', name: 'Chthon', title: 'the World Eater', icon: '🌋', hpMult: 1.1, atkMult: 0.65, goldMult: 1.85, xpMult: 1.85, guaranteedRarity: 'mythic', flavor: 'Has swallowed kingdoms whole and remembers none of them.', ability: 'enrage' },
+  { id: 'b_timeless', name: 'The Timeless One', title: 'Who Waits Beyond the Road', icon: '⏳', hpMult: 1.15, atkMult: 1.25, goldMult: 1.9, xpMult: 1.9, guaranteedRarity: 'mythic', flavor: 'It has already seen how this fight ends.', ability: 'reflect' },
+  { id: 'b_omegasovereign', name: 'Null', title: 'the Omega Sovereign', icon: '♾️', hpMult: 0.9, atkMult: 0.7, goldMult: 2, xpMult: 2, guaranteedRarity: 'mythic', flavor: 'The last boss before the road loops on itself.', ability: 'enrage' }
 ];
 
 /* ============================================================================
  * Boss scripts — phases, signature moves and passives.
  * A boss is not a big enemy: it changes the rules partway through the fight.
+ *
+ * Authoring limits (kept so every boss stays beatable at on-curve gear — see
+ * `npm run sim -- 200 all bosses`):
+ *   • phase attack multipliers ≤ 1.2, and at most Enrage (1) as a permanent buff
+ *   • wind-up payoffs ≤ 2.8× (they are telegraphed and parry-able), heavies ≤ 2.2×
+ *   • multi-hit moves total ≤ 2.4×, damage-over-time ≤ 4 stacks
+ *   • heals ≤ 10% per use, phase-entry shields ≤ 2.4× attack
  * ========================================================================== */
 
 export type BossPassive =
@@ -44,14 +60,14 @@ export type BossPassive =
 
 export const PASSIVE_INFO: Record<BossPassive, { name: string; icon: string; description: string }> = {
   undying: { name: 'Undying', icon: '⚰️', description: 'Rises once at 35% HP when slain.' },
-  thorns: { name: 'Thornmail', icon: '🌵', description: 'Reflects 25% of damage taken.' },
-  siphon: { name: 'Siphon', icon: '🧛', description: 'Heals for 25% of damage dealt.' },
-  relentless: { name: 'Relentless', icon: '📈', description: 'Gains +7% attack every turn.' },
-  adaptive: { name: 'Adaptive Hide', icon: '🧱', description: 'Fortifies whenever it is crit.' },
-  hoarfrost: { name: 'Hoarfrost', icon: '❄️', description: 'Every hit chills you — Weaken (1).' },
+  thorns: { name: 'Thornmail', icon: '🌵', description: 'Reflects 15% of damage taken.' },
+  siphon: { name: 'Siphon', icon: '🧛', description: 'Heals for 15% of damage dealt.' },
+  relentless: { name: 'Relentless', icon: '📈', description: 'Gains +2% attack every turn.' },
+  adaptive: { name: 'Adaptive Hide', icon: '🧱', description: 'Fortifies whenever it is crit (up to 3).' },
+  hoarfrost: { name: 'Hoarfrost', icon: '❄️', description: 'Every hit chills you — Weaken (1), up to 3.' },
   echo: { name: 'Echo', icon: '🔁', description: 'Every third turn its move repeats at 60%.' },
-  devour: { name: 'Devour', icon: '🍽️', description: 'Enrages whenever you heal.' },
-  rewind: { name: 'Rewind', icon: '⏳', description: 'Once, below 40%, it rewinds to 65% HP.' },
+  devour: { name: 'Devour', icon: '🍽️', description: 'Enrages whenever you heal a real chunk (up to 3).' },
+  rewind: { name: 'Rewind', icon: '⏳', description: 'Once, below 40%, it rewinds to 55% HP.' },
   nullify: { name: 'Nullify', icon: '🚫', description: 'Strips your buffs on every phase change.' }
 };
 
@@ -172,11 +188,11 @@ export const BOSS_SCRIPTS: Record<string, BossScript> = {
         name: 'Swarming',
         banner: 'The crown splits — every rat is the Ratking now.',
         at: 0.5,
-        onEnter: { status: S('enrage', 2, 99, 1, true), shieldFromAtk: 2 },
+        onEnter: { status: S('enrage', 1, 99, 1, true), shieldFromAtk: 1.4 },
         moves: [
           hit('Endless Tide', '🐀', 0.45, { hits: 4 }),
           heavy('Bite Storm', '💢', 1.5, { applies: S('bleed', 2, 3) }),
-          buff('Multiply', '➕', { healPct: 0.08, applies: S('enrage', 1, 99, 1, true) })
+          buff('Multiply', '➕', { healPct: 0.08, applies: S('enrage', 1, 4, 1, true) })
         ]
       }
     ]
@@ -199,10 +215,10 @@ export const BOSS_SCRIPTS: Record<string, BossScript> = {
         name: 'Cornered',
         banner: 'His warband is dead. He fights like it.',
         at: 0.45,
-        onEnter: { atkMult: 1.25 },
+        onEnter: { atkMult: 1.2 },
         moves: [
-          hit('Frantic Hacks', '🔪', 0.7, { hits: 3 }),
-          windup('Sharpening…', 'Chief Ender', '☄️', 2.7, { pierce: 0.5 }),
+          hit('Frantic Hacks', '🔪', 0.6, { hits: 3 }),
+          windup('Sharpening…', 'Chief Ender', '☄️', 2.4, { pierce: 0.5 }),
           heavy('Dirty Trick', '🪤', 1.4, { applies: S('stun', 1, 1, 0.4) })
         ]
       }
@@ -218,7 +234,7 @@ export const BOSS_SCRIPTS: Record<string, BossScript> = {
         at: 1,
         moves: [
           hit('Snap', '🐺', 0.95),
-          hit('Savage Rake', '🩸', 0.7, { hits: 2, applies: S('bleed', 2, 3) }),
+          hit('Savage Rake', '🩸', 0.7, { hits: 2, applies: S('bleed', 1, 3) }),
           guard('Circle', '🌫️', { shieldFromAtk: 1.6 })
         ]
       },
@@ -226,11 +242,11 @@ export const BOSS_SCRIPTS: Record<string, BossScript> = {
         name: 'Blood Scent',
         banner: 'He tastes blood. The circling stops.',
         at: 0.5,
-        onEnter: { atkMult: 1.3, status: S('enrage', 2, 99, 1, true) },
+        onEnter: { atkMult: 1.15, status: S('enrage', 1, 99, 1, true) },
         moves: [
           hit('Throat Snap', '🐺', 1.2, { pierce: 0.4 }),
-          heavy('Pounce', '💢', 2.0, { applies: S('bleed', 3, 3) }),
-          windup('Coiling…', 'Ripping Frenzy', '🩸', 1.0, { hits: 4 })
+          heavy('Pounce', '💢', 1.7, { applies: S('bleed', 1, 3) }),
+          windup('Coiling…', 'Ripping Frenzy', '🩸', 0.8, { hits: 4 })
         ]
       }
     ]
@@ -246,28 +262,28 @@ export const BOSS_SCRIPTS: Record<string, BossScript> = {
         moves: [
           hit('Hammerfist', '👊', 1),
           heavy('Shieldbreaker', '💢', 1.9, { pierce: 0.5 }),
-          guard('Iron Stance', '🛡️', { shieldFromAtk: 2.2, applies: S('fortify', 2, 2, 1, true) })
+          guard('Iron Stance', '🛡️', { shieldFromAtk: 1.5, applies: S('fortify', 2, 2, 1, true) })
         ]
       },
       {
         name: 'Unarmoured',
         banner: 'He tears off his own armour. He will not need it.',
         at: 0.55,
-        onEnter: { atkMult: 1.35 },
+        onEnter: { atkMult: 1.2 },
         moves: [
           hit('Wild Haymaker', '👊', 1.2),
-          windup('Roaring…', 'Warlord Slam', '☄️', 3.0),
-          buff('Bloodrage', '😤', { applies: S('enrage', 3, 3, 1, true) })
+          windup('Roaring…', 'Warlord Slam', '☄️', 2.8),
+          buff('Bloodrage', '😤', { applies: S('enrage', 2, 3, 1, true) })
         ]
       },
       {
         name: 'Last Stand',
         banner: 'A hundred shields. One more.',
         at: 0.2,
-        onEnter: { shieldFromAtk: 3 },
+        onEnter: { shieldFromAtk: 1.6 },
         moves: [
-          hit('Death Blows', '👊', 0.9, { hits: 3 }),
-          heavy('Skullcrusher', '💀', 2.4, { pierce: 0.6 })
+          hit('Death Blows', '👊', 0.8, { hits: 3 }),
+          heavy('Skullcrusher', '💀', 2.2, { pierce: 0.6 })
         ]
       }
     ]
@@ -281,20 +297,20 @@ export const BOSS_SCRIPTS: Record<string, BossScript> = {
         banner: 'The light on the road ahead goes out.',
         at: 1,
         moves: [
-          hit('Grave Touch', '👻', 0.95, { pierce: 0.6 }),
+          hit('Grave Touch', '👻', 1.05, { pierce: 0.6 }),
           hex('Soulchill', '💫', 0.5, { applies: S('weaken', 2, 3) }),
-          guard('Veil', '🌫️', { shieldFromAtk: 2 })
+          guard('Veil', '🌫️', { shieldFromAtk: 1.4 })
         ]
       },
       {
         name: 'Unveiled',
         banner: 'Morwen steps out of her own shadow.',
         at: 0.5,
-        onEnter: { healPct: 0.1, stripPlayerBuffs: true },
+        onEnter: { healPct: 0.06, stripPlayerBuffs: true },
         moves: [
-          hit('Spectral Rend', '👻', 1.15, { pierce: 0.8, drain: 0.5 }),
+          hit('Spectral Rend', '👻', 1.15, { pierce: 0.8, drain: 0.3 }),
           windup('Keening…', "Queen's Wail", '💠', 2.5, { applies: S('stun', 1, 1, 0.6) }),
-          mend('Devour Light', '💚', { healPct: 0.14 })
+          mend('Devour Light', '💚', { healPct: 0.07 })
         ]
       }
     ]
@@ -309,7 +325,7 @@ export const BOSS_SCRIPTS: Record<string, BossScript> = {
         at: 1,
         moves: [
           hit('Boulder Fist', '🗿', 1),
-          guard('Petrify', '🛡️', { shieldFromAtk: 3, applies: S('fortify', 3, 3, 1, true), weight: 70 }),
+          guard('Petrify', '🛡️', { shieldFromAtk: 1.4, applies: S('fortify', 2, 3, 1, true), weight: 50 }),
           heavy('Ground Split', '💢', 1.8, { applies: S('stun', 1, 1, 0.3) })
         ]
       },
@@ -320,8 +336,8 @@ export const BOSS_SCRIPTS: Record<string, BossScript> = {
         onEnter: { atkMult: 1.2 },
         moves: [
           hit('Magma Fist', '🌋', 1.2, { applies: S('burn', 2, 3) }),
-          windup('Rumbling…', 'Avalanche', '☄️', 2.9),
-          mend('Reform', '💚', { healPct: 0.12 })
+          windup('Rumbling…', 'Avalanche', '☄️', 2.8),
+          mend('Reform', '💚', { healPct: 0.07 })
         ]
       }
     ]
@@ -336,19 +352,19 @@ export const BOSS_SCRIPTS: Record<string, BossScript> = {
         at: 1,
         moves: [
           hit('Tail Lash', '🐲', 0.95),
-          hex('Venom Spray', '☠️', 0.6, { applies: S('poison', 4, 4) }),
-          windup('Climbing…', 'Diving Talons', '☄️', 2.6, { pierce: 0.5 })
+          hex('Venom Spray', '☠️', 0.6, { applies: S('poison', 2, 3) }),
+          windup('Climbing…', 'Diving Talons', '☄️', 2.0, { pierce: 0.5 })
         ]
       },
       {
         name: 'Grounded',
         banner: 'It lands. The ground is worse for you than the sky.',
         at: 0.45,
-        onEnter: { atkMult: 1.25, status: S('enrage', 2, 99, 1, true) },
+        onEnter: { atkMult: 1.1 },
         moves: [
-          hit('Rending Jaws', '🐲', 1.25, { applies: S('bleed', 2, 3) }),
-          heavy('Wing Buffet', '💢', 1.7, { applies: S('stun', 1, 1, 0.35) }),
-          hex('Toxic Flood', '☠️', 0.7, { applies: S('poison', 5, 4) })
+          hit('Rending Jaws', '🐲', 1.25, { applies: S('bleed', 1, 3) }),
+          heavy('Wing Buffet', '💢', 1.5, { applies: S('stun', 1, 1, 0.35) }),
+          hex('Toxic Flood', '☠️', 0.7, { applies: S('poison', 2, 3) })
         ]
       }
     ]
@@ -362,20 +378,20 @@ export const BOSS_SCRIPTS: Record<string, BossScript> = {
         banner: 'Azharok has died before. He remembers it.',
         at: 1,
         moves: [
-          hit('Shadow Bolt', '🔮', 1.05, { pierce: 0.6 }),
+          hit('Shadow Bolt', '🔮', 1.15, { pierce: 0.6 }),
           hex('Curse of Ash', '🔻', 0.5, { applies: S('weaken', 2, 3), applies2: S('burn', 2, 3) }),
-          windup('Channelling…', 'Soul Nova', '💠', 2.7, { pierce: 0.9 })
+          windup('Channelling…', 'Soul Nova', '💠', 2.4, { pierce: 0.8 })
         ]
       },
       {
         name: 'Phylactery',
         banner: 'His phylactery burns cold. He is only getting started.',
         at: 0.4,
-        onEnter: { shieldFromAtk: 3, healPct: 0.08 },
+        onEnter: { shieldFromAtk: 1.5, healPct: 0.06 },
         moves: [
-          hit('Drain Essence', '🧛', 1.2, { drain: 0.9 }),
-          heavy('Bone Storm', '💀', 1.9, { hits: 2 }),
-          mend('Consume Dead', '💚', { healPct: 0.15 })
+          hit('Drain Essence', '🧛', 1.2, { drain: 0.5 }),
+          heavy('Bone Storm', '💀', 1.2, { hits: 2 }),
+          mend('Consume Dead', '💚', { healPct: 0.06 })
         ]
       }
     ]
@@ -390,29 +406,29 @@ export const BOSS_SCRIPTS: Record<string, BossScript> = {
         at: 1,
         moves: [
           hit('Head Strike', '🐍', 0.6, { hits: 3 }),
-          hex('Acid Spit', '☠️', 0.55, { applies: S('poison', 4, 4) }),
-          heavy('Constrict', '💢', 1.7, { applies: S('stun', 1, 1, 0.3) })
+          hex('Acid Spit', '☠️', 0.55, { applies: S('poison', 2, 4) }),
+          heavy('Constrict', '💢', 1.5, { applies: S('stun', 1, 1, 0.3) })
         ]
       },
       {
         name: 'Regrowth',
         banner: 'You cut one head. Two more count the loss.',
         at: 0.6,
-        onEnter: { healPct: 0.12, status: S('enrage', 2, 99, 1, true) },
+        onEnter: { healPct: 0.1, status: S('enrage', 1, 99, 1, true) },
         moves: [
-          hit('Twin Bite', '🐍', 0.8, { hits: 3, applies: S('poison', 2, 3, 0.6) }),
-          mend('Regrow', '💚', { healPct: 0.1, cooldown: 3 }),
-          windup('Rearing…', 'Nine-Fold Bite', '☄️', 0.85, { hits: 5 })
+          hit('Twin Bite', '🐍', 0.65, { hits: 3, applies: S('poison', 2, 3, 0.4) }),
+          mend('Regrow', '💚', { healPct: 0.06, cooldown: 3 }),
+          windup('Rearing…', 'Nine-Fold Bite', '☄️', 0.55, { hits: 5 })
         ]
       },
       {
         name: 'Rot',
         banner: 'The stumps stop growing back. It stops caring.',
         at: 0.25,
-        onEnter: { atkMult: 1.4 },
+        onEnter: { atkMult: 1.2 },
         moves: [
           hit('Death Rattle', '🐍', 1.4, { pierce: 0.5 }),
-          hex('Plague Cloud', '☠️', 0.9, { applies: S('poison', 8, 5) })
+          hex('Plague Cloud', '☠️', 0.9, { applies: S('poison', 3, 4) })
         ]
       }
     ]
@@ -427,19 +443,19 @@ export const BOSS_SCRIPTS: Record<string, BossScript> = {
         at: 1,
         moves: [
           hit('Void Lash', '🌌', 1.1, { pierce: 0.7 }),
-          hex('Unmake', '🔻', 0.6, { applies: S('weaken', 3, 3) }),
-          guard('Null Field', '🛡️', { shieldFromAtk: 2.5 })
+          hex('Unmake', '🔻', 0.6, { applies: S('weaken', 2, 3) }),
+          guard('Null Field', '🛡️', { shieldFromAtk: 1.6 })
         ]
       },
       {
         name: 'Unmaking',
         banner: 'Reality declines to continue.',
         at: 0.5,
-        onEnter: { stripPlayerBuffs: true, atkMult: 1.3 },
+        onEnter: { stripPlayerBuffs: true, atkMult: 1.15 },
         moves: [
-          hit('Entropy', '🌌', 1.3, { pierce: 1 }),
-          windup('Collapsing…', 'Event Horizon', '🕳️', 3.2, { pierce: 1 }),
-          mend('Consume Light', '💚', { healPct: 0.12 })
+          hit('Entropy', '🌌', 1.15, { pierce: 1 }),
+          windup('Collapsing…', 'Event Horizon', '🕳️', 2.6, { pierce: 1 }),
+          mend('Consume Light', '💚', { healPct: 0.07 })
         ]
       }
     ]
@@ -454,19 +470,19 @@ export const BOSS_SCRIPTS: Record<string, BossScript> = {
         at: 1,
         moves: [
           hit('Thorn Whip', '🥀', 1, { applies: S('bleed', 2, 3, 0.6) }),
-          hex('Pollen', '☠️', 0.5, { applies: S('poison', 4, 4) }),
-          guard('Bramble Wall', '🛡️', { shieldFromAtk: 2.6 })
+          hex('Pollen', '☠️', 0.5, { applies: S('poison', 3, 4) }),
+          guard('Bramble Wall', '🛡️', { shieldFromAtk: 1.6 })
         ]
       },
       {
         name: 'Bloom',
         banner: 'Ysolde blooms. Everything she touches dies.',
         at: 0.45,
-        onEnter: { healPct: 0.1, status: S('regen', 3, 99, 1, true) },
+        onEnter: { healPct: 0.08, status: S('regen', 1, 6, 1, true) },
         moves: [
-          hit('Impaling Vines', '🌿', 1.3, { hits: 2, pierce: 0.4 }),
-          windup('Blossoming…', 'Thornburst', '☄️', 2.8, { applies: S('bleed', 4, 4) }),
-          mend('Photosynthesis', '💚', { healPct: 0.14 })
+          hit('Impaling Vines', '🌿', 1.1, { hits: 2, pierce: 0.4 }),
+          windup('Blossoming…', 'Thornburst', '☄️', 2.4, { applies: S('bleed', 3, 4) }),
+          mend('Photosynthesis', '💚', { healPct: 0.07 })
         ]
       }
     ]
@@ -481,7 +497,7 @@ export const BOSS_SCRIPTS: Record<string, BossScript> = {
         at: 1,
         moves: [
           hit('Piston Punch', '🤖', 1.05),
-          guard('Plating Online', '🛡️', { shieldFromAtk: 3, applies: S('fortify', 3, 3, 1, true) }),
+          guard('Plating Online', '🛡️', { shieldFromAtk: 1.5, applies: S('fortify', 2, 3, 1, true) }),
           heavy('Siege Cannon', '💢', 2.0, { pierce: 0.6 })
         ]
       },
@@ -489,11 +505,11 @@ export const BOSS_SCRIPTS: Record<string, BossScript> = {
         name: 'Overclocked',
         banner: 'SAFETY PROTOCOLS DISENGAGED.',
         at: 0.5,
-        onEnter: { atkMult: 1.4 },
+        onEnter: { atkMult: 1.2 },
         moves: [
-          hit('Autocannon', '🔫', 0.7, { hits: 4 }),
-          windup('Charging core…', 'Annihilation Beam', '☄️', 3.4, { pierce: 0.9 }),
-          buff('Overdrive', '😤', { applies: S('enrage', 3, 3, 1, true) })
+          hit('Autocannon', '🔫', 0.5, { hits: 4 }),
+          windup('Charging core…', 'Annihilation Beam', '☄️', 2.6, { pierce: 0.8 }),
+          buff('Overdrive', '😤', { applies: S('enrage', 2, 3, 1, true) })
         ]
       }
     ]
@@ -509,18 +525,18 @@ export const BOSS_SCRIPTS: Record<string, BossScript> = {
         moves: [
           hit('Arc Lash', '⚡', 1.05, { pierce: 0.6 }),
           hex('Static Field', '💫', 0.5, { applies: S('stun', 1, 1, 0.4) }),
-          windup('Calling the sky…', 'Thunderstrike', '🌩️', 2.7, { pierce: 0.7 })
+          windup('Calling the sky…', 'Thunderstrike', '🌩️', 2.4, { pierce: 0.7 })
         ]
       },
       {
         name: 'The Storm',
         banner: 'Kaelen stops calling the storm. The storm calls him.',
         at: 0.45,
-        onEnter: { atkMult: 1.3, status: S('enrage', 2, 99, 1, true) },
+        onEnter: { atkMult: 1.15, status: S('enrage', 1, 99, 1, true) },
         moves: [
-          hit('Chain Lightning', '⚡', 0.75, { hits: 3, pierce: 0.5 }),
+          hit('Chain Lightning', '⚡', 0.6, { hits: 3, pierce: 0.5 }),
           heavy('Downburst', '💢', 2.0, { applies: S('stun', 1, 1, 0.4) }),
-          guard('Stormshroud', '🛡️', { shieldFromAtk: 2.4 })
+          guard('Stormshroud', '🛡️', { shieldFromAtk: 1.5 })
         ]
       }
     ]
@@ -534,20 +550,20 @@ export const BOSS_SCRIPTS: Record<string, BossScript> = {
         banner: 'Something down there finally noticed you.',
         at: 1,
         moves: [
-          hit('Grasping Dark', '🕳️', 1.05, { drain: 0.5 }),
+          hit('Grasping Dark', '🕳️', 1.05, { drain: 0.3 }),
           hex('Dread', '🔻', 0.5, { applies: S('weaken', 2, 3) }),
-          heavy('Abyssal Maw', '💢', 1.85, { drain: 0.6 })
+          heavy('Abyssal Maw', '💢', 1.85, { drain: 0.4 })
         ]
       },
       {
         name: 'Surfacing',
         banner: 'It rises. There is more of it than the road can hold.',
         at: 0.5,
-        onEnter: { healPct: 0.1, atkMult: 1.25 },
+        onEnter: { healPct: 0.08, atkMult: 1.15 },
         moves: [
-          hit('Devouring Tide', '🌊', 0.85, { hits: 3, drain: 0.4 }),
-          windup('Inhaling…', 'Swallow Whole', '☄️', 3.0, { pierce: 0.6 }),
-          mend('Digest', '💚', { healPct: 0.16 })
+          hit('Devouring Tide', '🌊', 0.65, { hits: 3, drain: 0.3 }),
+          windup('Inhaling…', 'Swallow Whole', '☄️', 2.5, { pierce: 0.6 }),
+          mend('Digest', '💚', { healPct: 0.07 })
         ]
       }
     ]
@@ -563,18 +579,18 @@ export const BOSS_SCRIPTS: Record<string, BossScript> = {
         moves: [
           hit('Frost Lance', '🥶', 1.05, { pierce: 0.5 }),
           hex('Deep Freeze', '❄️', 0.55, { applies: S('stun', 1, 1, 0.5) }),
-          guard('Ice Wall', '🛡️', { shieldFromAtk: 2.8 })
+          guard('Ice Wall', '🛡️', { shieldFromAtk: 1.6 })
         ]
       },
       {
         name: 'Endless Winter',
         banner: 'Sythera stands. Her throne freezes over behind her.',
         at: 0.45,
-        onEnter: { atkMult: 1.3, status: S('fortify', 2, 99, 1, true) },
+        onEnter: { atkMult: 1.15, status: S('fortify', 2, 99, 1, true) },
         moves: [
-          hit('Shatterstorm', '❄️', 0.8, { hits: 3 }),
-          windup('The cold deepens…', 'Absolute Zero', '☄️', 3.1, { applies: S('stun', 1, 1, 0.7) }),
-          mend('Frozen Heart', '💚', { healPct: 0.13 })
+          hit('Shatterstorm', '❄️', 0.7, { hits: 3 }),
+          windup('The cold deepens…', 'Absolute Zero', '☄️', 2.5, { applies: S('stun', 1, 1, 0.7) }),
+          mend('Frozen Heart', '💚', { healPct: 0.07 })
         ]
       }
     ]
@@ -588,8 +604,8 @@ export const BOSS_SCRIPTS: Record<string, BossScript> = {
         banner: 'Karn counts his kills. You are a number.',
         at: 1,
         moves: [
-          hit('Reaving Blade', '🩸', 1.1, { applies: S('bleed', 2, 3) }),
-          heavy('Blood Harvest', '💢', 1.9, { drain: 0.7 }),
+          hit('Reaving Blade', '🩸', 1.1, { applies: S('bleed', 1, 3) }),
+          heavy('Blood Harvest', '💢', 1.9, { drain: 0.3 }),
           buff('Blood Frenzy', '😤', { applies: S('enrage', 2, 3, 1, true) })
         ]
       },
@@ -597,11 +613,11 @@ export const BOSS_SCRIPTS: Record<string, BossScript> = {
         name: 'Crimson',
         banner: 'His blade is the right colour now.',
         at: 0.5,
-        onEnter: { atkMult: 1.35, healPct: 0.08 },
+        onEnter: { atkMult: 1.2, healPct: 0.08 },
         moves: [
-          hit('Exsanguinate', '🩸', 0.9, { hits: 3, applies: S('bleed', 2, 3, 0.7) }),
-          windup('Savouring…', 'Crimson Execution', '☄️', 3.2, { pierce: 0.7 }),
-          mend('Drink Deep', '💚', { healPct: 0.15 })
+          hit('Exsanguinate', '🩸', 0.6, { hits: 3, applies: S('bleed', 2, 3, 0.5) }),
+          windup('Savouring…', 'Crimson Execution', '☄️', 2.6, { pierce: 0.7 }),
+          mend('Drink Deep', '💚', { healPct: 0.07 })
         ]
       }
     ]
@@ -616,19 +632,19 @@ export const BOSS_SCRIPTS: Record<string, BossScript> = {
         at: 1,
         moves: [
           hit('Fate Thread', '🌠', 1.05, { pierce: 0.6 }),
-          hex('Unravel', '🔻', 0.55, { applies: S('weaken', 3, 3) }),
-          guard('Woven Ward', '🛡️', { shieldFromAtk: 2.6 })
+          hex('Unravel', '🔻', 0.55, { applies: S('weaken', 2, 3) }),
+          guard('Woven Ward', '🛡️', { shieldFromAtk: 1.4 })
         ]
       },
       {
         name: 'Rewoven',
         banner: 'She pulls a thread. Something you had is gone.',
         at: 0.55,
-        onEnter: { stripPlayerBuffs: true, healPct: 0.1 },
+        onEnter: { stripPlayerBuffs: true, healPct: 0.08 },
         moves: [
-          hit('Starfall', '⭐', 0.7, { hits: 4, pierce: 0.4 }),
-          windup('Weaving…', 'Constellation', '☄️', 3.0, { pierce: 0.8 }),
-          mend('Mend Fate', '💚', { healPct: 0.14 })
+          hit('Starfall', '⭐', 0.6, { hits: 4, pierce: 0.4 }),
+          windup('Weaving…', 'Constellation', '☄️', 2.6, { pierce: 0.8 }),
+          mend('Mend Fate', '💚', { healPct: 0.07 })
         ]
       }
     ]
@@ -643,7 +659,7 @@ export const BOSS_SCRIPTS: Record<string, BossScript> = {
         at: 1,
         moves: [
           hit('Magma Fist', '🌋', 1.1, { applies: S('burn', 2, 3, 0.6) }),
-          heavy('Tectonic Slam', '💢', 2.0),
+          heavy('Tectonic Slam', '💢', 1.8),
           buff('Molten Rage', '😤', { applies: S('enrage', 2, 3, 1, true) })
         ]
       },
@@ -651,21 +667,21 @@ export const BOSS_SCRIPTS: Record<string, BossScript> = {
         name: 'Feeding',
         banner: 'It opens. The horizon tilts toward the mouth.',
         at: 0.6,
-        onEnter: { atkMult: 1.3 },
+        onEnter: { atkMult: 1.15 },
         moves: [
-          hit('Ash Storm', '🔥', 0.75, { hits: 3, applies: S('burn', 2, 3, 0.5) }),
-          windup('Inhaling the world…', 'Devour', '☄️', 3.3, { pierce: 0.7 }),
-          mend('Consume', '💚', { healPct: 0.12 })
+          hit('Ash Storm', '🔥', 0.6, { hits: 3, applies: S('burn', 2, 3, 0.3) }),
+          windup('Inhaling the world…', 'Devour', '☄️', 2.4, { pierce: 0.7 }),
+          mend('Consume', '💚', { healPct: 0.07 })
         ]
       },
       {
         name: 'Eruption',
         banner: 'Everything it ever ate comes back out at once.',
         at: 0.25,
-        onEnter: { atkMult: 1.35, status: S('enrage', 3, 99, 1, true) },
+        onEnter: { atkMult: 1.15 },
         moves: [
-          hit('Cataclysm', '🌋', 1.5, { pierce: 0.6, applies: S('burn', 3, 3) }),
-          heavy('World Break', '☄️', 2.6, { pierce: 0.8 })
+          hit('Cataclysm', '🌋', 1.3, { pierce: 0.6, applies: S('burn', 1, 3) }),
+          heavy('World Break', '☄️', 2.2, { pierce: 0.8 })
         ]
       }
     ]
@@ -681,18 +697,18 @@ export const BOSS_SCRIPTS: Record<string, BossScript> = {
         moves: [
           hit('Foreseen Strike', '⏳', 1.1, { pierce: 0.7 }),
           hex('Stasis', '💫', 0.5, { applies: S('stun', 1, 1, 0.5) }),
-          guard('Loop', '🛡️', { shieldFromAtk: 2.8 })
+          guard('Loop', '🛡️', { shieldFromAtk: 1.5 })
         ]
       },
       {
         name: 'Rewritten',
         banner: 'It corrects a mistake it has not made yet.',
         at: 0.5,
-        onEnter: { stripPlayerBuffs: true, atkMult: 1.3 },
+        onEnter: { stripPlayerBuffs: true, atkMult: 1.15 },
         moves: [
-          hit('Cascade', '⏳', 0.8, { hits: 3, pierce: 0.5 }),
-          windup('Winding back…', 'Endpoint', '☄️', 3.3, { pierce: 0.9 }),
-          mend('Restore', '💚', { healPct: 0.15 })
+          hit('Cascade', '⏳', 0.6, { hits: 3, pierce: 0.5 }),
+          windup('Winding back…', 'Endpoint', '☄️', 2.6, { pierce: 0.9 }),
+          mend('Restore', '💚', { healPct: 0.07 })
         ]
       }
     ]
@@ -707,29 +723,29 @@ export const BOSS_SCRIPTS: Record<string, BossScript> = {
         at: 1,
         moves: [
           hit('Omega Strike', '♾️', 1.15, { pierce: 0.5 }),
-          guard('Absolute Guard', '🛡️', { shieldFromAtk: 3.2, applies: S('fortify', 3, 3, 1, true) }),
-          heavy('Erasure', '💢', 2.1, { pierce: 0.7 })
+          guard('Absolute Guard', '🛡️', { shieldFromAtk: 1.0, applies: S('fortify', 1, 3, 1, true) }),
+          heavy('Erasure', '💢', 1.9, { pierce: 0.6 })
         ]
       },
       {
         name: 'Ascendant',
         banner: 'It stops pretending to have limits.',
         at: 0.6,
-        onEnter: { atkMult: 1.3, stripPlayerBuffs: true },
+        onEnter: { atkMult: 1.15, stripPlayerBuffs: true },
         moves: [
-          hit('Cascade Failure', '♾️', 0.85, { hits: 4, pierce: 0.5 }),
-          windup('Zeroing…', 'Total Erasure', '☄️', 3.4, { pierce: 1 }),
-          hex('Silence', '🔻', 0.7, { applies: S('weaken', 3, 3) })
+          hit('Cascade Failure', '♾️', 0.5, { hits: 4, pierce: 0.5 }),
+          windup('Zeroing…', 'Total Erasure', '☄️', 2.6, { pierce: 0.8 }),
+          hex('Silence', '🔻', 0.7, { applies: S('weaken', 2, 2) })
         ]
       },
       {
         name: 'Omega',
         banner: 'The last boss before the road loops on itself.',
         at: 0.25,
-        onEnter: { healPct: 0.1, status: S('enrage', 3, 99, 1, true), shieldFromAtk: 3 },
+        onEnter: { healPct: 0.08, status: S('enrage', 1, 99, 1, true), shieldFromAtk: 1.4 },
         moves: [
-          hit('End of Line', '♾️', 1.6, { pierce: 0.8 }),
-          heavy('Null', '⚫', 2.8, { pierce: 1 })
+          hit('End of Line', '♾️', 1.2, { pierce: 0.7 }),
+          heavy('Null', '⚫', 2.2, { pierce: 0.8 })
         ]
       }
     ]
@@ -744,14 +760,14 @@ export const DEFAULT_BOSS_SCRIPT: BossScript = {
       name: 'Assault',
       banner: 'It moves to block the road.',
       at: 1,
-      moves: [hit('Strike', '⚔️', 1), heavy('Heavy Blow', '💢', 1.8), guard('Guard', '🛡️', { shieldFromAtk: 2 })]
+      moves: [hit('Strike', '⚔️', 1), heavy('Heavy Blow', '💢', 1.8), guard('Guard', '🛡️', { shieldFromAtk: 1.4 })]
     },
     {
       name: 'Desperate',
       banner: 'It stops holding back.',
       at: 0.45,
-      onEnter: { atkMult: 1.3 },
-      moves: [hit('Frenzy', '⚔️', 0.9, { hits: 2 }), windup('Winding up…', 'Finisher', '☄️', 2.8)]
+      onEnter: { atkMult: 1.2 },
+      moves: [hit('Frenzy', '⚔️', 0.9, { hits: 2 }), windup('Winding up…', 'Finisher', '☄️', 2.6)]
     }
   ]
 };
@@ -764,24 +780,44 @@ export function bossBaseById(id: string): BossBase | undefined {
   return BOSS_BASES.find(b => b.id === id);
 }
 
+/**
+ * Boss numbers relative to an on-level normal enemy. A boss is a long fight
+ * with phases that heal and shield, so its HP is several fights' worth and
+ * its attack sits between a normal and an elite (phases multiply it later).
+ */
+export const BOSS_TUNING = {
+  /** HP / attack relative to the level nominal, growing with level (see ENEMY_TUNING for why). */
+  hp: 1.5,
+  hpPerLevel: 0.005,
+  atk: 1.2,
+  atkPerLevel: 0.01,
+  def: 1.5,
+  gold: 5,
+  xp: 5,
+  /** Extra strength per full loop of the roster (Rank 2, 3…). */
+  loopGrowth: 0.1
+};
+
 export function pickBoss(worldCycle: number, level: number): EnemyInstance {
   const idx = worldCycle % BOSS_BASES.length;
   const loop = Math.floor(worldCycle / BOSS_BASES.length);
   const base = BOSS_BASES[idx];
-  const growth = 1 + level * 0.16 + loop * 0.35;
-  const hp = Math.round(22 * base.hpMult * growth);
-  const atk = Math.round(4 * base.atkMult * growth);
-  const gold = Math.round(10 * base.goldMult * growth);
-  const xp = Math.round(14 * base.xpMult * growth);
-  const title = loop > 0 ? `${base.title} (Rank ${loop + 1})` : base.title;
+  const B = BOSS_TUNING;
+  const rank = 1 + loop * B.loopGrowth;
+  const hp = Math.round(nominalHp(level) * (B.hp + B.hpPerLevel * level) * base.hpMult * rank);
+  const atk = Math.round(nominalAtk(level) * (B.atk + B.atkPerLevel * level) * base.atkMult * rank);
+  const gold = Math.round(nominalGold(level) * B.gold * base.goldMult * rank);
+  const xp = Math.round(nominalXp(level) * B.xp * base.xpMult * rank);
+  const baseTitle = cfield('boss', base.id, 'title', base.title);
+  const title = loop > 0 ? t('data.boss_rank', { title: baseTitle, n: loop + 1 }) : baseTitle;
   return {
     id: base.id,
-    name: base.name,
+    name: cname('boss', base.id, base.name),
     icon: base.icon,
     hp,
     maxHp: hp,
     atk,
-    def: Math.round(4 + level * 0.5 + loop * 3),
+    def: Math.round(nominalDef(level) * B.def * rank),
     goldReward: gold,
     xpReward: xp,
     isBoss: true,

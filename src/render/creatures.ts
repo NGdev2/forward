@@ -267,17 +267,19 @@ function buildAnim(pose: CreaturePose, t: number, seed: number): Anim {
     a.squashY = 1 + a.breathe * 0.025;
     a.squashX = 1 - a.breathe * 0.018;
   } else if (pose === 'attack') {
+    // Wind-up pulls BACK (negative lunge = away from the facing direction),
+    // the strike drives FORWARD toward the target, then it settles.
     const q = (t % 0.8) / 0.8;
     if (q < 0.4) {
       const k = q / 0.4;
-      a.lunge = 8 * k;
+      a.lunge = -8 * k;
       a.crouch = 5 * k;
       a.squashY = 1 - 0.1 * k;
       a.squashX = 1 + 0.08 * k;
       a.eyeSquint = 0.3 * k;
     } else if (q < 0.55) {
       const k = (q - 0.4) / 0.15;
-      a.lunge = 8 - 30 * k;
+      a.lunge = -8 + 30 * k;
       a.crouch = 5 - 8 * k;
       a.squashY = 0.9 + 0.22 * k;
       a.squashX = 1.08 - 0.16 * k;
@@ -285,7 +287,7 @@ function buildAnim(pose: CreaturePose, t: number, seed: number): Anim {
       a.eyeSquint = 0.3 + 0.5 * k;
     } else {
       const k = (q - 0.55) / 0.45;
-      a.lunge = -22 + 22 * k;
+      a.lunge = 22 - 22 * k;
       a.crouch = -3 + 3 * k;
       a.squashY = 1.12 - 0.12 * k;
       a.squashX = 0.92 + 0.08 * k;
@@ -831,6 +833,75 @@ function drawBeast(c: Ctx, d: CreatureDesign, an: Anim, U: number) {
   if (d.wings !== 'none') drawWings(c, d, bw * 0.05, bodyY - bh * 0.85, U * 0.62, an, false);
 }
 
+/**
+ * A hand weapon in weapon-local space: the hand is at the origin, the grip
+ * hangs below it (+y) and the business end runs up -y. The caller rotates it
+ * so -y points where the creature is facing.
+ */
+function drawHeldWeapon(c: Ctx, d: CreatureDesign, U: number) {
+  const wm = material(d.boss ? '#c9b06a' : '#9aa5b8', null, 0.9);
+  const kind = d.bulk >= 1.4 ? 'axe' : d.size < 0.9 ? 'dagger' : 'sword';
+  const len = kind === 'dagger' ? U * 0.3 : kind === 'axe' ? U * 0.58 : U * 0.5;
+  const gw = kind === 'dagger' ? 3 : 4.4;
+  const metal = linGrad(c, -U * 0.08, -len, U * 0.08, 0, [
+    [0, wm.hi],
+    [0.5, wm.base],
+    [1, wm.lo]
+  ]);
+  // grip
+  c.fillStyle = linGrad(c, -3, 0, 3, U * 0.14, [[0, '#5a4230'], [1, '#2e2016']]);
+  c.beginPath();
+  c.roundRect(-gw / 2, -U * 0.04, gw, U * 0.16, 2);
+  c.fill();
+  ink(c, 1);
+  if (kind === 'axe') {
+    // long haft with a bearded head; the bit faces +x (forward once rotated)
+    c.fillStyle = linGrad(c, -2.4, -len, 2.4, 0, [[0, '#6b4a2c'], [1, '#2e2016']]);
+    c.beginPath();
+    c.roundRect(-2.4, -len, 4.8, len + U * 0.06, 2);
+    c.fill();
+    ink(c, 1);
+    const hy = -len + U * 0.1;
+    c.beginPath();
+    c.moveTo(-U * 0.02, hy - U * 0.12);
+    c.quadraticCurveTo(U * 0.2, hy - U * 0.16, U * 0.24, hy - U * 0.02);
+    c.quadraticCurveTo(U * 0.2, hy + U * 0.12, -U * 0.02, hy + U * 0.14);
+    c.closePath();
+    c.fillStyle = metal;
+    c.fill();
+    ink(c, 1.3);
+    c.strokeStyle = alpha(wm.spec, 0.7);
+    c.lineWidth = 1.2;
+    c.beginPath();
+    c.moveTo(U * 0.2, hy - U * 0.08);
+    c.quadraticCurveTo(U * 0.23, hy, U * 0.19, hy + U * 0.08);
+    c.stroke();
+    return;
+  }
+  // cross guard
+  c.fillStyle = wm.lo;
+  c.beginPath();
+  c.roundRect(-U * 0.07, -U * 0.065, U * 0.14, U * 0.03, 1.5);
+  c.fill();
+  ink(c, 1);
+  // blade
+  const hw = kind === 'dagger' ? U * 0.035 : U * 0.05;
+  c.beginPath();
+  c.moveTo(-hw, -U * 0.05);
+  c.quadraticCurveTo(-hw * 1.05, -len * 0.62, 0, -len);
+  c.quadraticCurveTo(hw * 1.05, -len * 0.62, hw, -U * 0.05);
+  c.closePath();
+  c.fillStyle = metal;
+  c.fill();
+  ink(c, 1.3);
+  c.strokeStyle = alpha(wm.spec, 0.65);
+  c.lineWidth = 1;
+  c.beginPath();
+  c.moveTo(-hw * 0.3, -U * 0.08);
+  c.quadraticCurveTo(-hw * 0.4, -len * 0.6, 0, -len * 0.92);
+  c.stroke();
+}
+
 function drawHumanoid(c: Ctx, d: CreatureDesign, an: Anim, U: number) {
   const s = skinOf(d);
   const hipY = -U * 0.44 + an.crouch * 0.3;
@@ -914,10 +985,12 @@ function drawHumanoid(c: Ctx, d: CreatureDesign, an: Anim, U: number) {
   c.fill();
   ink(c, 1);
 
-  // front arm (+ weapon)
+  // front arm (+ weapon): raised and forward at rest, driven forward and
+  // down through the strike. Local +x is the facing direction, so the blade
+  // always points at whatever the creature is facing — never back at itself.
   const sx = bw * 0.8;
   const sy = chestY + U * 0.02;
-  const ang = -0.6 - armSw;
+  const ang = -0.6 + armSw * 0.9;
   const ex = sx + Math.cos(ang) * U * 0.2;
   const ey = sy + Math.sin(ang) * U * 0.2 + U * 0.12;
   const wx = ex + Math.cos(ang - 0.5) * U * 0.2;
@@ -926,25 +999,10 @@ function drawHumanoid(c: Ctx, d: CreatureDesign, an: Anim, U: number) {
   if (d.armed) {
     c.save();
     c.translate(wx, wy);
-    c.rotate(-1.9 - armSw * 0.9);
-    const wm = material(d.boss ? '#c9b06a' : '#9aa5b8', null, 0.9);
-    c.fillStyle = linGrad(c, -3, 0, 3, -U * 0.5, [[0, '#5a4230'], [1, '#2e2016']]);
-    c.beginPath();
-    c.roundRect(-2.2, -U * 0.12, 4.4, U * 0.16, 2);
-    c.fill();
-    ink(c, 1);
-    c.beginPath();
-    c.moveTo(-U * 0.05, -U * 0.1);
-    c.quadraticCurveTo(-U * 0.07, -U * 0.35, 0, -U * 0.5);
-    c.quadraticCurveTo(U * 0.08, -U * 0.34, U * 0.055, -U * 0.1);
-    c.closePath();
-    c.fillStyle = linGrad(c, -U * 0.06, -U * 0.5, U * 0.06, 0, [
-      [0, wm.hi],
-      [0.5, wm.base],
-      [1, wm.lo]
-    ]);
-    c.fill();
-    ink(c, 1.3);
+    // Blade runs along local -y; 0.55 rad puts it forward-up at rest and the
+    // strike sweeps it to forward-down.
+    c.rotate(0.55 + armSw * 0.95);
+    drawHeldWeapon(c, d, U);
     c.restore();
   } else {
     c.fillStyle = s.mat.base;
@@ -1077,21 +1135,32 @@ function drawUndead(c: Ctx, d: CreatureDesign, an: Anim, U: number) {
   if (d.armed) {
     c.save();
     c.translate(wx, wy);
-    c.rotate(-2.2 - armSw * 0.7);
-    // staff / scythe
-    c.fillStyle = linGrad(c, -2.5, 0, 2.5, -U * 0.7, [[0, '#4a3b2c'], [1, '#241a12']]);
+    // Staff held upright with the focus on top; the strike tilts it forward
+    // so the orb lunges toward the target.
+    c.rotate(0.14 + armSw * 0.6);
+    c.fillStyle = linGrad(c, -2.5, -U * 0.7, 2.5, U * 0.2, [[0, '#4a3b2c'], [1, '#241a12']]);
     c.beginPath();
-    c.roundRect(-2.2, -U * 0.7, 4.4, U * 0.85, 2);
+    c.roundRect(-2.2, -U * 0.72, 4.4, U * 0.95, 2);
     c.fill();
     ink(c, 1.1);
+    // claw cradle for the focus
+    c.strokeStyle = '#241a12';
+    c.lineWidth = 2;
+    c.lineCap = 'round';
+    for (const sg of [-1, 1]) {
+      c.beginPath();
+      c.moveTo(0, -U * 0.68);
+      c.quadraticCurveTo(sg * U * 0.08, -U * 0.74, sg * U * 0.05, -U * 0.84);
+      c.stroke();
+    }
     const gc = d.eyeColor;
-    glow(c, 0, -U * 0.72, U * 0.24, gc, 0.7);
-    c.fillStyle = radGrad(c, -1, -U * 0.74, 0, 0, -U * 0.72, U * 0.07, [
+    glow(c, 0, -U * 0.78, U * 0.24, gc, 0.7 + an.strike * 0.5);
+    c.fillStyle = radGrad(c, -1, -U * 0.8, 0, 0, -U * 0.78, U * 0.07, [
       [0, '#fff'],
       [1, gc]
     ]);
     c.beginPath();
-    c.arc(0, -U * 0.72, U * 0.06, 0, TAU);
+    c.arc(0, -U * 0.78, U * 0.06, 0, TAU);
     c.fill();
     c.restore();
   }
@@ -1374,6 +1443,30 @@ function drawSpectre(c: Ctx, d: CreatureDesign, an: Anim, U: number) {
       c.lineTo(sg * (w * 1.25 + reach) + i * U * 0.03, armY + U * 0.26 - reach);
       c.stroke();
     }
+  }
+  if (d.armed) {
+    // Spectral scythe in the leading hand: haft upright, blade hooking
+    // forward (+x) over the target, swung down on the strike.
+    const hx0 = w * 1.25 + reach;
+    const hy0 = armY + U * 0.16 - reach;
+    c.save();
+    c.translate(hx0, hy0);
+    c.rotate(0.3 + an.strike * 0.9);
+    c.fillStyle = linGrad(c, -2.4, -U * 0.8, 2.4, U * 0.3, [[0, '#4a4262'], [1, '#1c1828']]);
+    c.beginPath();
+    c.roundRect(-2.4, -U * 0.8, 4.8, U * 1.1, 2);
+    c.fill();
+    ink(c, 1.1);
+    const bc = lighten(d.eyeColor, 0.2);
+    c.fillStyle = linGrad(c, 0, -U * 0.85, U * 0.4, -U * 0.55, [
+      [0, lighten(bc, 0.4)],
+      [1, alpha(bc, 0.7)]
+    ]);
+    spike(c, 0, -U * 0.76, U * 0.46, U * 0.1, 0.12, -0.42);
+    c.fill();
+    ink(c, 1.2, alpha(darken(bc, 0.5), 0.8));
+    glow(c, U * 0.2, -U * 0.72, U * 0.22, d.eyeColor, 0.5 + an.strike * 0.4);
+    c.restore();
   }
   c.restore();
   glow(c, 0, topY + U * 0.4, U * 0.6, d.eyeColor, 0.22);

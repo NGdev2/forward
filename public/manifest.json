@@ -17,5 +17,6 @@
       "type": "image/png"
     }
   ],
-  "_comment": "Icons above are placeholder art generated for packaging groundwork only. Replace with real app icons before publishing."
+  "description": "An endless road. Three lanes. Fight, loot, and level.",
+  "orientation": "portrait"
 }

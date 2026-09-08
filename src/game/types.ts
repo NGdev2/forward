@@ -228,12 +228,22 @@ export interface Consumable {
   price: number;
 }
 
+export type Language = 'en' | 'fr';
+
 export interface PlayerSettings {
   sfx: boolean;
   music: boolean;
   reducedMotion: boolean;
   autoEquip: boolean;
+  /** 0..1 mixer levels. `sfx`/`music` booleans remain the hard mute. */
+  sfxVolume: number;
+  musicVolume: number;
+  language: Language;
 }
+
+/** Permanent stat picks bought with the points awarded on level up. */
+export type TalentKey = 'might' | 'guard' | 'vigor' | 'precision';
+export const TALENT_KEYS: TalentKey[] = ['might', 'guard', 'vigor', 'precision'];
 
 export interface PlayerStats {
   level: number;
@@ -256,6 +266,16 @@ export interface PlayerStats {
   bestDistance: number;
   battlesWon: number;
   bossesFelled: number;
+  /* ---- lifetime records, shown on the main screen ---- */
+  kills: number;
+  killsById: Record<string, number>;
+  damageDealt: number;
+  damageTaken: number;
+  perfectParries: number;
+  goldEarned: number;
+  fightsLost: number;
+  bossesLost: number;
+  talents: Record<TalentKey, number>;
   equipment: EquipmentSet;
   inventory: ItemInstance[];
   inventoryCap: number;

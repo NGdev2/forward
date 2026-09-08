@@ -50,7 +50,13 @@ interface Ambient {
   vy: number;
   r: number;
   a: number;
+  /** Per-particle phase for blink / sway / wobble. */
+  phase: number;
 }
+
+/** How long the lane swerve takes; a finite ease so the hero never drifts. */
+const SWERVE_DUR = 0.45;
+const easeOutCubic = (t: number) => 1 - (1 - t) * (1 - t) * (1 - t);
 
 export class RunScene {
   private c: CanvasRenderingContext2D;
@@ -75,12 +81,22 @@ export class RunScene {
   private phaseT = 0;
   private heroLane = 1;
   private heroLaneTarget = 1;
+  /** Swerve bookkeeping: time-based, finite, with a lean that settles to 0. */
+  private swerveFrom = 1;
+  private swerveTo = 1;
+  private swerveT = SWERVE_DUR;
+  private swerveDir = 0;
+  private lightningIn = 4;
+  private lightning = 0;
   private chosen: Marker | null = null;
   private arrived = false;
   private bossHeat = 0;
   private impact = 0;
   private stars: { x: number; y: number; r: number; a: number }[] = [];
   private reduced: boolean;
+  /** Scratch buffers for the road outline (reused every frame). */
+  private roadEdgeL: number[] = [];
+  private roadEdgeR: number[] = [];
 
   /** Seconds left to make a choice; the HUD renders a ring from this. */
   chooseLeft = 0;
@@ -140,20 +156,101 @@ export class RunScene {
   private seedAmbient() {
     this.ambient = [];
     if (this.biome.ambient === 'none' || this.reduced) return;
-    const n = this.biome.ambient === 'snow' ? 46 : 28;
+    const k = this.biome.ambient;
+    const n = k === 'snow' || k === 'rain' ? 46 : k === 'ash' || k === 'petal' ? 36 : k === 'mist' ? 9 : k === 'wind' ? 14 : k === 'wisp' ? 12 : 28;
     for (let i = 0; i < n; i++) this.ambient.push(this.newAmbient(true));
   }
 
-  private newAmbient(anywhere = false): Ambient {
-    const drifty = this.biome.ambient === 'leaf' || this.biome.ambient === 'spore';
-    return {
-      x: Math.random() * this.w,
-      y: anywhere ? Math.random() * this.h : -10,
-      vx: (Math.random() - 0.5) * (drifty ? 40 : 18),
-      vy: 30 + Math.random() * (this.biome.ambient === 'ember' ? -90 : 90),
-      r: 1 + Math.random() * (this.biome.ambient === 'snow' ? 2.4 : 1.8),
-      a: 0.25 + Math.random() * 0.6
-    };
+  /** Fills `into` (or a fresh particle) for the biome's weather kind. */
+  private newAmbient(anywhere = false, into?: Ambient): Ambient {
+    const k = this.biome.ambient;
+    const a = into ?? { x: 0, y: 0, vx: 0, vy: 0, r: 1, a: 0.5, phase: 0 };
+    a.x = Math.random() * this.w;
+    a.y = anywhere ? Math.random() * this.h : -10;
+    a.phase = Math.random() * Math.PI * 2;
+    switch (k) {
+      case 'ember':
+        a.vx = (Math.random() - 0.5) * 18;
+        a.vy = -(30 + Math.random() * 90);
+        a.r = 1 + Math.random() * 1.8;
+        a.a = 0.25 + Math.random() * 0.6;
+        if (!anywhere) a.y = this.h + 10;
+        break;
+      case 'snow':
+        a.vx = (Math.random() - 0.5) * 18;
+        a.vy = 30 + Math.random() * 90;
+        a.r = 1 + Math.random() * 2.4;
+        a.a = 0.25 + Math.random() * 0.6;
+        break;
+      case 'leaf':
+      case 'spore':
+        a.vx = (Math.random() - 0.5) * 40;
+        a.vy = 30 + Math.random() * 90;
+        a.r = 1 + Math.random() * 1.8;
+        a.a = 0.25 + Math.random() * 0.6;
+        break;
+      case 'firefly':
+        // Hangs low over the ground and wanders; blinks via phase.
+        a.y = anywhere ? this.h * (0.35 + Math.random() * 0.6) : this.h * (0.4 + Math.random() * 0.5);
+        a.vx = (Math.random() - 0.5) * 22;
+        a.vy = (Math.random() - 0.5) * 14;
+        a.r = 1.2 + Math.random() * 1.2;
+        a.a = 0.5 + Math.random() * 0.5;
+        break;
+      case 'mist':
+        a.x = anywhere ? Math.random() * this.w : -120;
+        a.y = this.h * (0.3 + Math.random() * 0.55);
+        a.vx = 12 + Math.random() * 16;
+        a.vy = 0;
+        a.r = 60 + Math.random() * 90;
+        a.a = 0.08 + Math.random() * 0.1;
+        break;
+      case 'wind':
+        a.x = anywhere ? Math.random() * this.w : -80;
+        a.y = Math.random() * this.h * 0.8;
+        a.vx = 260 + Math.random() * 260;
+        a.vy = 6 + Math.random() * 10;
+        a.r = 30 + Math.random() * 60; // streak length
+        a.a = 0.12 + Math.random() * 0.2;
+        break;
+      case 'ash':
+        a.vx = (Math.random() - 0.5) * 14;
+        a.vy = 14 + Math.random() * 30;
+        a.r = 1 + Math.random() * 2.2;
+        a.a = 0.2 + Math.random() * 0.4;
+        break;
+      case 'petal':
+        a.vx = 10 + Math.random() * 30;
+        a.vy = 22 + Math.random() * 40;
+        a.r = 1.8 + Math.random() * 2.2;
+        a.a = 0.4 + Math.random() * 0.5;
+        if (!anywhere && Math.random() < 0.5) {
+          a.x = -10;
+          a.y = Math.random() * this.h * 0.7;
+        }
+        break;
+      case 'rain':
+        a.vx = -90 - Math.random() * 40;
+        a.vy = 520 + Math.random() * 260;
+        a.r = 10 + Math.random() * 12; // streak length
+        a.a = 0.16 + Math.random() * 0.24;
+        if (!anywhere) a.x = Math.random() * (this.w + 200);
+        break;
+      case 'wisp':
+        a.y = anywhere ? this.h * (0.35 + Math.random() * 0.55) : this.h * (0.4 + Math.random() * 0.5);
+        a.vx = (Math.random() - 0.5) * 16;
+        a.vy = -(4 + Math.random() * 8);
+        a.r = 2.5 + Math.random() * 3;
+        a.a = 0.35 + Math.random() * 0.45;
+        break;
+      default:
+        // dust
+        a.vx = (Math.random() - 0.5) * 18;
+        a.vy = 30 + Math.random() * 90;
+        a.r = 1 + Math.random() * 1.8;
+        a.a = 0.25 + Math.random() * 0.6;
+    }
+    return a;
   }
 
   private seedProps() {
@@ -242,8 +339,38 @@ export class RunScene {
     this.arrived = false;
     this.phase = 'boss';
     this.phaseT = 0;
-    this.heroLaneTarget = 1;
+    this.steerTo(1);
     this.targetSpeed = this.baseSpeed() * 0.85;
+  }
+
+  /**
+   * Starts a lane swerve: a quick ease-out with a lean into the turn and a
+   * dust kick, ending exactly on the lane so the hero visibly runs straight
+   * down the road again afterwards.
+   */
+  private steerTo(lane: number) {
+    this.heroLaneTarget = lane;
+    if (Math.abs(lane - this.heroLane) < 0.01) return;
+    this.swerveFrom = this.heroLane;
+    this.swerveTo = lane;
+    this.swerveT = 0;
+    this.swerveDir = lane > this.heroLane ? 1 : -1;
+    if (!this.reduced) {
+      const zh = 0.12;
+      const x = this.laneX(this.heroLane, zh);
+      const y = this.yAt(zh);
+      this.ctx.fx.burst(x - this.swerveDir * 10, y - 4, 'dust', {
+        count: 9,
+        speed: 150,
+        spread: Math.PI * 0.9,
+        color: this.biome.roadEdge
+      });
+    }
+  }
+
+  /** 0..1 progress of the current swerve (1 = settled). */
+  private get swerveP(): number {
+    return Math.min(1, this.swerveT / SWERVE_DUR);
   }
 
   get bossIntensity(): number {
@@ -267,7 +394,7 @@ export class RunScene {
     for (const m of this.markers) {
       if (m !== target) m.discarded = true;
     }
-    this.heroLaneTarget = lane;
+    this.steerTo(lane);
     this.phase = 'commit';
     this.phaseT = 0;
     this.targetSpeed = this.baseSpeed() * 1.75;
@@ -316,9 +443,38 @@ export class RunScene {
     this.travel += this.speed * dt;
     this.ctx.state.addDistance(this.speed * dt * METERS_PER_UNIT);
 
-    // Hero swerve.
-    const ease = this.phase === 'commit' ? 6.5 : 4;
-    this.heroLane += (this.heroLaneTarget - this.heroLane) * Math.min(1, dt * ease);
+    // Hero swerve: finite, time-based. It ends exactly on the lane; there is
+    // no asymptotic tail that would keep the hero creeping sideways.
+    if (this.swerveT < SWERVE_DUR) {
+      const before = this.swerveT;
+      this.swerveT = Math.min(SWERVE_DUR, this.swerveT + dt);
+      this.heroLane = this.swerveFrom + (this.swerveTo - this.swerveFrom) * easeOutCubic(this.swerveP);
+      if (this.swerveT >= SWERVE_DUR) {
+        this.heroLane = this.swerveTo;
+        // Feet plant on the new lane.
+        if (!this.reduced && before < SWERVE_DUR) {
+          const zh = 0.12;
+          this.ctx.fx.burst(this.laneX(this.heroLane, zh), this.yAt(zh) - 3, 'dust', {
+            count: 6,
+            speed: 90,
+            spread: Math.PI * 0.8,
+            color: this.biome.roadEdge
+          });
+        }
+      }
+    } else {
+      this.heroLane = this.heroLaneTarget;
+    }
+
+    // Lightning on storm biomes.
+    if (this.biome.lightning && !this.reduced) {
+      this.lightning = Math.max(0, this.lightning - dt * 3.2);
+      this.lightningIn -= dt;
+      if (this.lightningIn <= 0) {
+        this.lightning = 1;
+        this.lightningIn = 3.5 + Math.random() * 6;
+      }
+    }
 
     // Recycle scenery.
     for (const p of this.props) {
@@ -333,12 +489,16 @@ export class RunScene {
     }
 
     // Ambient weather.
+    const ak = this.biome.ambient;
+    const sway = ak === 'petal' || ak === 'leaf' || ak === 'snow' || ak === 'ash';
+    const wander = ak === 'firefly' || ak === 'wisp';
     for (const a of this.ambient) {
-      a.x += a.vx * dt;
-      a.y += a.vy * dt;
-      if (a.y > this.h + 12 || a.y < -20 || a.x < -20 || a.x > this.w + 20) {
-        Object.assign(a, this.newAmbient());
-        if (this.biome.ambient === 'ember') a.y = this.h + 10;
+      a.x += a.vx * dt + (sway ? Math.sin(this.time * 1.7 + a.phase) * 22 * dt : 0);
+      a.y += a.vy * dt + (wander ? Math.cos(this.time * 1.1 + a.phase) * 9 * dt : 0);
+      if (wander && a.y < this.h * 0.32) a.vy = Math.abs(a.vy) * 0.6 + 2;
+      const margin = a.r + 20;
+      if (a.y > this.h + margin || a.y < -margin || a.x < -margin - 120 || a.x > this.w + margin + 120) {
+        this.newAmbient(false, a);
       }
     }
 
@@ -460,6 +620,41 @@ export class RunScene {
     c.arc(sx, sy, rr * 0.55, 0, Math.PI * 2);
     c.fill();
     c.globalAlpha = 1;
+
+    // Boss approach: the sky goes dark and bruised from the top down.
+    if (this.bossHeat > 0.01) {
+      const k = this.bossHeat;
+      const dg = c.createLinearGradient(0, 0, 0, hy + 24);
+      dg.addColorStop(0, `rgba(12,2,8,${0.7 * k})`);
+      dg.addColorStop(0.7, `rgba(60,8,20,${0.45 * k})`);
+      dg.addColorStop(1, `rgba(60,8,20,${0.1 * k})`);
+      c.fillStyle = dg;
+      c.fillRect(0, 0, this.w, hy + 24);
+    }
+
+    if (this.lightning > 0.01) {
+      // Bolt from the sky, then a sky-wide flash that fades fast.
+      const k = this.lightning;
+      if (k > 0.6) {
+        c.save();
+        c.strokeStyle = `rgba(230,240,255,${(k - 0.6) * 2.2})`;
+        c.lineWidth = 2;
+        c.lineJoin = 'round';
+        c.beginPath();
+        let lx = this.w * (0.2 + 0.6 * ((this.lightningIn * 7.3) % 1));
+        let ly = 0;
+        c.moveTo(lx, ly);
+        for (let i = 0; i < 6; i++) {
+          lx += (((this.lightningIn * 13.1 + i * 3.7) % 1) - 0.5) * this.w * 0.14;
+          ly += hy / 6;
+          c.lineTo(lx, ly);
+        }
+        c.stroke();
+        c.restore();
+      }
+      c.fillStyle = `rgba(210,225,255,${0.28 * k})`;
+      c.fillRect(0, 0, this.w, this.h);
+    }
   }
 
   private drawHills() {
@@ -516,6 +711,12 @@ export class RunScene {
     const span = this.h - hy;
 
     let prev: { y: number; z: number; cx: number; hw: number } | null = null;
+    // Road outline, collected while walking the rows so the biome tint can be
+    // washed over the whole ribbon in a single fill afterwards.
+    const edgeL = this.roadEdgeL;
+    const edgeR = this.roadEdgeR;
+    edgeL.length = 0;
+    edgeR.length = 0;
     for (let i = 0; i <= rows; i++) {
       const y = hy + (span * i) / rows;
       // Invert the perspective mapping to get the depth at this screen row.
@@ -574,6 +775,23 @@ export class RunScene {
         }
       }
       prev = { y, z, cx, hw };
+      edgeL.push(cx - hw, y);
+      edgeR.push(cx + hw, y);
+    }
+
+    // Biome light on the road: a subtle colour wash so each region reads at
+    // a glance even where the asphalt tones are similar.
+    if (edgeL.length >= 4) {
+      c.save();
+      c.globalCompositeOperation = 'overlay';
+      c.fillStyle = b.tint;
+      c.beginPath();
+      c.moveTo(edgeL[0], edgeL[1]);
+      for (let i = 2; i < edgeL.length; i += 2) c.lineTo(edgeL[i], edgeL[i + 1]);
+      for (let i = edgeR.length - 2; i >= 0; i -= 2) c.lineTo(edgeR[i], edgeR[i + 1]);
+      c.closePath();
+      c.fill();
+      c.restore();
     }
 
     // Distance fog over the far road.
@@ -706,6 +924,281 @@ export class RunScene {
         c.ellipse(0, -h * 0.3, h * 0.22, h * 0.14, 0, Math.PI, 0);
         c.fill();
         break;
+      case 'willow': {
+        // Trunk plus a drooping curtain of fronds.
+        c.fillStyle = b.sceneryA;
+        c.fillRect(-h * 0.05, -h * 0.62, h * 0.1, h * 0.62);
+        // crown
+        c.fillStyle = b.sceneryB;
+        c.beginPath();
+        c.ellipse(0, -h * 0.66, h * 0.3, h * 0.13, 0, 0, Math.PI * 2);
+        c.fill();
+        // drooping strands, longest in the middle, brushing the ground
+        c.strokeStyle = b.sceneryB;
+        c.lineCap = 'round';
+        c.lineWidth = Math.max(1, h * 0.03);
+        const sw = Math.sin(this.time * 1.3 + p.seed) * h * 0.035;
+        for (let i = -4; i <= 4; i++) {
+          const sx = i * h * 0.07;
+          const endX = sx * 1.6 + sw * (1 + Math.abs(i) * 0.15);
+          c.beginPath();
+          c.moveTo(sx, -h * 0.66);
+          c.quadraticCurveTo(sx * 1.9 + sw * 0.5, -h * 0.4, endX, -h * (0.04 + Math.abs(i) * 0.03));
+          c.stroke();
+        }
+        break;
+      }
+      case 'reed': {
+        c.strokeStyle = b.sceneryB;
+        c.lineCap = 'round';
+        c.lineWidth = Math.max(1, h * 0.02);
+        const sw = Math.sin(this.time * 2 + p.seed) * h * 0.03;
+        for (let i = -2; i <= 2; i++) {
+          const top = -h * (0.3 + ((p.seed * 7 + i * 3) % 5) * 0.03);
+          c.beginPath();
+          c.moveTo(i * h * 0.06, 0);
+          c.quadraticCurveTo(i * h * 0.06 + sw * 0.5, top * 0.6, i * h * 0.06 + sw, top);
+          c.stroke();
+          c.fillStyle = b.sceneryA;
+          c.fillRect(i * h * 0.06 + sw - h * 0.014, top - h * 0.06, h * 0.028, h * 0.07);
+        }
+        break;
+      }
+      case 'peak': {
+        // A mountain standing well back from the road, with a snow cap. It is
+        // pushed outward and kept translucent so it never buries the markers.
+        const H = h * 1.5;
+        c.translate(p.side * h * 1.1, 0);
+        c.globalAlpha = fade * 0.8;
+        c.fillStyle = b.sceneryA;
+        c.beginPath();
+        c.moveTo(-H * 0.55, 0);
+        c.lineTo(-H * 0.12, -H * 0.72);
+        c.lineTo(0, -H);
+        c.lineTo(H * 0.18, -H * 0.7);
+        c.lineTo(H * 0.55, 0);
+        c.closePath();
+        c.fill();
+        c.fillStyle = b.sceneryB;
+        c.beginPath();
+        c.moveTo(-H * 0.12, -H * 0.72);
+        c.lineTo(0, -H);
+        c.lineTo(H * 0.18, -H * 0.7);
+        c.lineTo(H * 0.1, -H * 0.66);
+        c.lineTo(H * 0.03, -H * 0.72);
+        c.lineTo(-H * 0.05, -H * 0.64);
+        c.closePath();
+        c.fill();
+        break;
+      }
+      case 'banner': {
+        // Prayer flags strung from a pole, rippling.
+        c.fillStyle = b.sceneryA;
+        c.fillRect(-h * 0.03, -h * 0.9, h * 0.06, h * 0.9);
+        c.strokeStyle = b.sceneryA;
+        c.lineWidth = 1;
+        c.beginPath();
+        c.moveTo(0, -h * 0.86);
+        c.quadraticCurveTo(-p.side * h * 0.45, -h * 0.7, -p.side * h * 0.9, -h * 0.78);
+        c.stroke();
+        const cols = ['#ff5c5c', '#ffd35c', '#5cff8a', '#5cb8ff', '#ffffff'];
+        for (let i = 0; i < 5; i++) {
+          const t = (i + 0.5) / 5;
+          const fx = -p.side * h * 0.9 * t;
+          const fy = -h * 0.86 + (-h * 0.7 + h * 0.86) * 2 * t * (1 - t) * 0.6 - h * 0.02;
+          const rip = Math.sin(this.time * 6 + i + p.seed) * h * 0.03;
+          c.fillStyle = cols[(i + Math.floor(p.seed)) % 5];
+          c.beginPath();
+          c.moveTo(fx - h * 0.06, fy);
+          c.lineTo(fx + h * 0.06, fy);
+          c.lineTo(fx + h * 0.06 + rip, fy + h * 0.14);
+          c.lineTo(fx - h * 0.06 + rip, fy + h * 0.14);
+          c.closePath();
+          c.fill();
+        }
+        break;
+      }
+      case 'icespike': {
+        c.fillStyle = b.sceneryB;
+        c.globalAlpha = fade * 0.9;
+        for (let i = -1; i <= 1; i++) {
+          const hh = h * (i === 0 ? 0.6 : 0.36);
+          c.beginPath();
+          c.moveTo(i * h * 0.2, 0);
+          c.lineTo(i * h * 0.2 - h * 0.1, 0);
+          c.lineTo(i * h * 0.2 + i * h * 0.05, -hh);
+          c.lineTo(i * h * 0.2 + h * 0.1, 0);
+          c.closePath();
+          c.fill();
+        }
+        break;
+      }
+      case 'lavarock': {
+        c.fillStyle = b.sceneryA;
+        c.beginPath();
+        c.moveTo(-h * 0.34, 0);
+        c.lineTo(-h * 0.2, -h * 0.3);
+        c.lineTo(h * 0.05, -h * 0.38);
+        c.lineTo(h * 0.34, -h * 0.1);
+        c.lineTo(h * 0.3, 0);
+        c.closePath();
+        c.fill();
+        // molten cracks
+        const pulse = 0.6 + 0.4 * Math.sin(this.time * 3 + p.seed);
+        c.strokeStyle = b.sceneryB;
+        c.globalAlpha = fade * pulse;
+        c.lineWidth = Math.max(1, h * 0.025);
+        c.beginPath();
+        c.moveTo(-h * 0.2, -h * 0.05);
+        c.lineTo(-h * 0.05, -h * 0.2);
+        c.lineTo(h * 0.1, -h * 0.12);
+        c.lineTo(h * 0.2, -h * 0.22);
+        c.stroke();
+        break;
+      }
+      case 'geyser': {
+        c.fillStyle = b.sceneryA;
+        c.beginPath();
+        c.ellipse(0, -h * 0.04, h * 0.3, h * 0.1, 0, 0, Math.PI * 2);
+        c.fill();
+        const cycle = (this.time * 0.5 + p.seed) % 1;
+        if (cycle < 0.45) {
+          const k = Math.sin((cycle / 0.45) * Math.PI);
+          c.fillStyle = b.sceneryB;
+          c.globalAlpha = fade * 0.55 * k;
+          c.beginPath();
+          c.moveTo(-h * 0.08, -h * 0.05);
+          c.lineTo(-h * 0.16, -h * 0.9 * k);
+          c.lineTo(h * 0.16, -h * 0.9 * k);
+          c.lineTo(h * 0.08, -h * 0.05);
+          c.closePath();
+          c.fill();
+          c.fillStyle = '#ffe0c0';
+          c.globalAlpha = fade * 0.3 * k;
+          c.beginPath();
+          c.ellipse(0, -h * 0.95 * k, h * 0.26, h * 0.12, 0, 0, Math.PI * 2);
+          c.fill();
+        }
+        break;
+      }
+      case 'sakura': {
+        c.fillStyle = b.sceneryA;
+        c.fillRect(-h * 0.05, -h * 0.4, h * 0.1, h * 0.4);
+        c.fillStyle = b.sceneryB;
+        c.beginPath();
+        c.arc(0, -h * 0.58, h * 0.28, 0, Math.PI * 2);
+        c.arc(-h * 0.24, -h * 0.44, h * 0.19, 0, Math.PI * 2);
+        c.arc(h * 0.24, -h * 0.46, h * 0.2, 0, Math.PI * 2);
+        c.arc(h * 0.02, -h * 0.78, h * 0.16, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = 'rgba(255,255,255,0.35)';
+        c.beginPath();
+        c.arc(-h * 0.08, -h * 0.66, h * 0.1, 0, Math.PI * 2);
+        c.fill();
+        break;
+      }
+      case 'lantern': {
+        c.fillStyle = b.sceneryA;
+        c.fillRect(-h * 0.06, -h * 0.5, h * 0.12, h * 0.5);
+        c.fillRect(-h * 0.16, -h * 0.52, h * 0.32, h * 0.05);
+        const flick = 0.75 + 0.25 * Math.sin(this.time * 7 + p.seed);
+        const g = c.createRadialGradient(0, -h * 0.62, 0, 0, -h * 0.62, h * 0.5);
+        g.addColorStop(0, `rgba(255,200,110,${0.45 * flick})`);
+        g.addColorStop(1, 'rgba(255,200,110,0)');
+        c.fillStyle = g;
+        c.fillRect(-h * 0.5, -h * 1.1, h, h);
+        c.fillStyle = '#ffd98a';
+        c.beginPath();
+        c.roundRect(-h * 0.1, -h * 0.74, h * 0.2, h * 0.22, h * 0.03);
+        c.fill();
+        c.fillStyle = b.sceneryA;
+        c.fillRect(-h * 0.14, -h * 0.78, h * 0.28, h * 0.04);
+        break;
+      }
+      case 'palm': {
+        const lean = p.side * 0.25;
+        c.strokeStyle = b.sceneryA;
+        c.lineWidth = Math.max(1.5, h * 0.06);
+        c.lineCap = 'round';
+        c.beginPath();
+        c.moveTo(0, 0);
+        c.quadraticCurveTo(-lean * h * 0.4, -h * 0.5, -lean * h * 0.9, -h * 0.8);
+        c.stroke();
+        const tx = -lean * h * 0.9;
+        const ty = -h * 0.8;
+        c.strokeStyle = b.sceneryB;
+        c.lineWidth = Math.max(1.5, h * 0.05);
+        const sw = Math.sin(this.time * 1.8 + p.seed) * h * 0.04;
+        for (let i = 0; i < 6; i++) {
+          const a = -Math.PI * 0.95 + (i / 5) * Math.PI * 0.9;
+          c.beginPath();
+          c.moveTo(tx, ty);
+          c.quadraticCurveTo(tx + Math.cos(a) * h * 0.25, ty + Math.sin(a) * h * 0.25 - h * 0.05, tx + Math.cos(a) * h * 0.42 + sw, ty + Math.sin(a) * h * 0.42 + h * 0.12);
+          c.stroke();
+        }
+        break;
+      }
+      case 'wreck': {
+        // The ribs of a beached hull.
+        c.strokeStyle = b.sceneryA;
+        c.lineCap = 'round';
+        c.lineWidth = Math.max(1.5, h * 0.05);
+        for (let i = -2; i <= 2; i++) {
+          const rh = h * (0.5 - Math.abs(i) * 0.08);
+          c.beginPath();
+          c.moveTo(i * h * 0.16, 0);
+          c.quadraticCurveTo(i * h * 0.16 + p.side * h * 0.22, -rh * 0.7, i * h * 0.16 + p.side * h * 0.12, -rh);
+          c.stroke();
+        }
+        c.beginPath();
+        c.moveTo(-h * 0.4, -h * 0.02);
+        c.lineTo(h * 0.4, -h * 0.02);
+        c.stroke();
+        break;
+      }
+      case 'deadtree': {
+        c.strokeStyle = b.sceneryA;
+        c.lineCap = 'round';
+        c.lineWidth = Math.max(1.5, h * 0.07);
+        c.beginPath();
+        c.moveTo(0, 0);
+        c.lineTo(h * 0.02, -h * 0.55);
+        c.stroke();
+        c.lineWidth = Math.max(1, h * 0.035);
+        const branches = [
+          [0.02, -0.55, -0.22, -0.82],
+          [0.02, -0.55, 0.2, -0.78],
+          [0.01, -0.36, -0.2, -0.5],
+          [0.02, -0.45, 0.22, -0.55],
+          [-0.22, -0.82, -0.3, -0.98],
+          [0.2, -0.78, 0.34, -0.9]
+        ];
+        for (const [x0, y0, x1, y1] of branches) {
+          c.beginPath();
+          c.moveTo(x0 * h, y0 * h);
+          c.lineTo(x1 * h, y1 * h);
+          c.stroke();
+        }
+        break;
+      }
+      case 'totem': {
+        c.fillStyle = b.sceneryA;
+        c.beginPath();
+        c.roundRect(-h * 0.12, -h * 0.7, h * 0.24, h * 0.7, h * 0.03);
+        c.fill();
+        c.fillRect(-h * 0.24, -h * 0.66, h * 0.48, h * 0.05);
+        // three stacked faces, eyes lit
+        const pulse = 0.6 + 0.4 * Math.sin(this.time * 2.4 + p.seed);
+        c.fillStyle = b.sceneryB;
+        c.globalAlpha = fade * pulse;
+        for (let i = 0; i < 3; i++) {
+          const fy = -h * (0.58 - i * 0.2);
+          c.fillRect(-h * 0.08, fy, h * 0.05, h * 0.03);
+          c.fillRect(h * 0.03, fy, h * 0.05, h * 0.03);
+          c.fillRect(-h * 0.06, fy + h * 0.08, h * 0.12, h * 0.02);
+        }
+        break;
+      }
     }
     c.restore();
   }
@@ -928,8 +1421,10 @@ export class RunScene {
     const padX = 12 * k;
     const titleSize = Math.round(15 * k);
     const subSize = Math.round(11 * k);
+    const icon = node.icon ?? '';
     c.font = `700 ${titleSize}px ${FONT}`;
-    const tw = c.measureText(node.title.toUpperCase()).width;
+    const iw = icon ? c.measureText(icon).width + 5 * k : 0;
+    const tw = c.measureText(node.title.toUpperCase()).width + iw;
     c.font = `600 ${subSize}px ${FONT}`;
     const rw = c.measureText(node.rewardHint).width;
     const w = Math.max(tw, rw) + padX * 2;
@@ -951,7 +1446,16 @@ export class RunScene {
     c.textBaseline = 'middle';
     c.fillStyle = '#f2f4fb';
     c.font = `700 ${titleSize}px ${FONT}`;
-    c.fillText(node.title.toUpperCase(), x, top + h * (node.rewardHint ? 0.32 : 0.5));
+    const ty = top + h * (node.rewardHint ? 0.32 : 0.5);
+    if (icon) {
+      // Icon leads the title so the lane's kind reads before the words do.
+      c.textAlign = 'left';
+      c.fillText(icon, x - tw / 2, ty);
+      c.fillText(node.title.toUpperCase(), x - tw / 2 + iw, ty);
+      c.textAlign = 'center';
+    } else {
+      c.fillText(node.title.toUpperCase(), x, ty);
+    }
     if (node.rewardHint) {
       c.fillStyle = col;
       c.font = `600 ${subSize}px ${FONT}`;
@@ -1017,10 +1521,24 @@ export class RunScene {
       c.restore();
     }
 
+    // Swerve: the hero leans into the turn and straightens as the ease
+    // finishes, so he is unmistakably running down the road again after.
+    const p = this.swerveP;
+    const leanK = p < 1 && !this.reduced ? Math.sin(p * Math.PI) : 0;
+    const lean = -this.swerveDir * leanK * 0.34;
+    if (leanK > 0.001) {
+      c.save();
+      c.translate(x, y);
+      c.rotate(lean);
+      // A hint of the body turning toward the new lane.
+      c.scale(1 - leanK * 0.12, 1);
+      c.translate(-x, -y);
+    }
     this.ctx.sprites.drawHero(c, x, y - bounce, scale, this.look, 'run', {
       time: this.time,
       facing: 1
     });
+    if (leanK > 0.001) c.restore();
   }
 
   /* -------------------------------------------------------------- effects -- */
@@ -1028,13 +1546,84 @@ export class RunScene {
   private drawAmbient() {
     if (this.ambient.length === 0) return;
     const c = this.c;
+    const k = this.biome.ambient;
+    const col = this.biome.ambientColor;
     c.save();
-    c.fillStyle = this.biome.ambientColor;
-    for (const a of this.ambient) {
-      c.globalAlpha = a.a * 0.8;
-      c.beginPath();
-      c.arc(a.x, a.y, a.r, 0, Math.PI * 2);
-      c.fill();
+    c.fillStyle = col;
+    c.strokeStyle = col;
+    c.lineCap = 'round';
+    switch (k) {
+      case 'rain':
+        c.lineWidth = 1.2;
+        for (const a of this.ambient) {
+          c.globalAlpha = a.a;
+          c.beginPath();
+          c.moveTo(a.x, a.y);
+          c.lineTo(a.x + a.vx * 0.03, a.y + a.vy * 0.03);
+          c.stroke();
+        }
+        break;
+      case 'wind':
+        c.lineWidth = 1.4;
+        for (const a of this.ambient) {
+          c.globalAlpha = a.a;
+          c.beginPath();
+          c.moveTo(a.x - a.r, a.y + Math.sin(a.phase) * 2);
+          c.quadraticCurveTo(a.x - a.r * 0.5, a.y - 3, a.x, a.y);
+          c.stroke();
+        }
+        break;
+      case 'mist':
+        for (const a of this.ambient) {
+          c.globalAlpha = a.a;
+          c.beginPath();
+          c.ellipse(a.x, a.y, a.r, a.r * 0.28, 0, 0, Math.PI * 2);
+          c.fill();
+        }
+        break;
+      case 'firefly':
+        for (const a of this.ambient) {
+          const blink = Math.max(0, Math.sin(this.time * 2.6 + a.phase * 3));
+          if (blink < 0.05) continue;
+          c.globalAlpha = a.a * blink * 0.35;
+          c.beginPath();
+          c.arc(a.x, a.y, a.r * 3.2, 0, Math.PI * 2);
+          c.fill();
+          c.globalAlpha = a.a * blink;
+          c.beginPath();
+          c.arc(a.x, a.y, a.r, 0, Math.PI * 2);
+          c.fill();
+        }
+        break;
+      case 'wisp':
+        c.globalCompositeOperation = 'lighter';
+        for (const a of this.ambient) {
+          const pulse = 0.7 + 0.3 * Math.sin(this.time * 3 + a.phase);
+          c.globalAlpha = a.a * 0.25 * pulse;
+          c.beginPath();
+          c.arc(a.x, a.y, a.r * 3, 0, Math.PI * 2);
+          c.fill();
+          c.globalAlpha = a.a * pulse;
+          c.beginPath();
+          c.arc(a.x, a.y, a.r * 0.8, 0, Math.PI * 2);
+          c.fill();
+        }
+        break;
+      case 'petal':
+        for (const a of this.ambient) {
+          c.globalAlpha = a.a * 0.9;
+          c.beginPath();
+          c.ellipse(a.x, a.y, a.r, a.r * 0.55, this.time * 2 + a.phase, 0, Math.PI * 2);
+          c.fill();
+        }
+        break;
+      default:
+        for (const a of this.ambient) {
+          c.globalAlpha = a.a * 0.8;
+          c.beginPath();
+          c.arc(a.x, a.y, a.r, 0, Math.PI * 2);
+          c.fill();
+        }
     }
     c.restore();
   }

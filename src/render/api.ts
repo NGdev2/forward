@@ -102,7 +102,35 @@ export interface BurstOpts {
   gravity?: number;
 }
 
-export type FloatKind = 'damage' | 'crit' | 'heal' | 'block' | 'miss' | 'gold' | 'xp' | 'status';
+export type FloatKind =
+  | 'damage'
+  | 'crit'
+  | 'heal'
+  | 'block'
+  | 'miss'
+  | 'gold'
+  | 'xp'
+  | 'status'
+  | 'parry'
+  | 'shield'
+  | 'hint';
+
+/**
+ * Visual flavour of an attack trail / parry impact. Set elements come from
+ * `data/items.ts` (`SetElement`); the rest map ability schools. `steel` is the
+ * clean default when nothing elemental is worn.
+ */
+export type FxElement =
+  | 'steel'
+  | 'fire'
+  | 'water'
+  | 'void'
+  | 'holy'
+  | 'metal'
+  | 'beast'
+  | 'frost'
+  | 'arcane'
+  | 'poison';
 
 export interface FxKit {
   /** Advances particles. Called once per frame by the active screen. */
@@ -122,6 +150,10 @@ export interface FxKit {
   flash(color: string, ms?: number): void;
   /** Clears all live particles, e.g. on screen change. */
   clear(): void;
+  /** Elemental streak from (x0,y0) to (x1,y1) — the path of a strike or bolt. */
+  trail(x0: number, y0: number, x1: number, y1: number, element: FxElement): void;
+  /** Elemental impact at a point — fire ring, water arc, claw slashes… */
+  impact(x: number, y: number, element: FxElement, opts?: { scale?: number }): void;
 }
 
 export type SfxId =
@@ -146,6 +178,32 @@ export interface AudioKit {
   play(id: SfxId): void;
   setEnabled(on: boolean): void;
   get enabled(): boolean;
+  /** Mixer level 0..1 for all effects. */
+  setVolume(v: number): void;
   /** Browsers require a user gesture before audio can start. */
+  unlock(): void;
+}
+
+/* ----------------------------------------------------------------- music -- */
+
+/**
+ * Which score is playing. Screens set the mode on mount; the music layer
+ * crossfades between them and never restarts a track that is already playing.
+ */
+export type MusicMode = 'off' | 'title' | 'run' | 'combat' | 'boss' | 'shop' | 'victory' | 'defeat';
+
+export interface MusicKit {
+  setMode(mode: MusicMode): void;
+  get mode(): MusicMode;
+  /**
+   * 0..1 tension knob: the combat score layers in percussion and a rising
+   * motif as the player's HP falls or a boss enters a new phase.
+   */
+  setIntensity(v: number): void;
+  /** Mixer level 0..1. */
+  setVolume(v: number): void;
+  setEnabled(on: boolean): void;
+  get enabled(): boolean;
+  /** Called on the first user gesture so the AudioContext can start. */
   unlock(): void;
 }

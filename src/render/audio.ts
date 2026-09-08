@@ -70,7 +70,12 @@ const SFX: Record<SfxId, Tone[]> = {
 export class Audio implements AudioKit {
   private ctx: AudioContext | null = null;
   private on = true;
+  private volume = 0.8;
   private noiseBuffer: AudioBuffer | null = null;
+
+  setVolume(v: number) {
+    this.volume = Math.max(0, Math.min(1, v));
+  }
 
   get enabled() {
     return this.on;
@@ -120,7 +125,7 @@ export class Audio implements AudioKit {
       const start = now + (tone.delay ?? 0);
       const gain = ctx.createGain();
       gain.gain.setValueAtTime(0.0001, start);
-      gain.gain.exponentialRampToValueAtTime(tone.gain, start + 0.012);
+      gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, tone.gain * this.volume), start + 0.012);
       gain.gain.exponentialRampToValueAtTime(0.0001, start + tone.dur);
       gain.connect(ctx.destination);
 

@@ -1,5 +1,6 @@
 import type { EnemyBase, EnemyInstance, IntentKind } from '../types';
 import type { StatusApplication } from './abilities';
+import { name as cname, t } from '../../i18n';
 
 /* ============================================================================
  * Enemy behaviour — archetypes and move sets.
@@ -450,34 +451,126 @@ function tierForLevel(level: number): number {
   return Math.max(1, Math.min(10, Math.ceil(level / 4)));
 }
 
+/* ------------------------------------------------------------------ curve -- */
+
+/**
+ * Level curve. Enemy stats are computed from the player level directly (the
+ * base tables only provide per-creature flavour around the tier average), so
+ * the whole difficulty curve lives in these numbers. Tuned with `npm run sim`;
+ * the resulting table is in scripts/BALANCE.md.
+ */
+export const ENEMY_TUNING = {
+  /** Nominal HP of an on-level normal enemy: hp0 + hp1·L + hp2·L². */
+  hp0: 21,
+  hp1: 22,
+  hp2: 0.55,
+  /** Nominal attack of an on-level normal enemy. */
+  atk0: 5,
+  atk1: 2.0,
+  atk2: 0.12,
+  /** Nominal defense. */
+  def0: 2,
+  def1: 3,
+  /** Rewards. */
+  xp0: 6,
+  xp1: 2.4,
+  xp2: 0.06,
+  gold0: 5,
+  gold1: 2.5,
+  gold2: 0.04,
+  /**
+   * Elite multipliers (on top of the +1 level the road gives them). They grow
+   * with level: a fresh hero has no potions or sustain to absorb a double-strength
+   * hit, a level-30 hero has plenty.
+   */
+  eliteHp: 0.65,
+  eliteHpPerLevel: 0.005,
+  eliteAtk: 1.5,
+  eliteAtkPerLevel: 0.01,
+  eliteDef: 1.2,
+  eliteGold: 2.5,
+  eliteXp: 2.2,
+  /** How far a creature's own base numbers may pull it from the tier average. */
+  flavourSpread: 0.6
+};
+
+export function nominalHp(level: number): number {
+  const T = ENEMY_TUNING;
+  return T.hp0 + T.hp1 * level + T.hp2 * level * level;
+}
+export function nominalAtk(level: number): number {
+  const T = ENEMY_TUNING;
+  return T.atk0 + T.atk1 * level + T.atk2 * level * level;
+}
+export function nominalDef(level: number): number {
+  const T = ENEMY_TUNING;
+  return T.def0 + T.def1 * level;
+}
+export function nominalXp(level: number): number {
+  const T = ENEMY_TUNING;
+  return T.xp0 + T.xp1 * level + T.xp2 * level * level;
+}
+export function nominalGold(level: number): number {
+  const T = ENEMY_TUNING;
+  return T.gold0 + T.gold1 * level + T.gold2 * level * level;
+}
+
+/** Tier averages of the base table, so a creature's numbers become a relative flavour factor. */
+const TIER_MEAN: Record<number, { hp: number; atk: number; gold: number; xp: number; n: number }> = {};
+for (const e of ENEMY_BASES) {
+  const t = (TIER_MEAN[e.tier] ??= { hp: 0, atk: 0, gold: 0, xp: 0, n: 0 });
+  t.hp += e.hpBase;
+  t.atk += e.atkBase;
+  t.gold += e.goldBase;
+  t.xp += e.xpBase;
+  t.n += 1;
+}
+for (const t of Object.values(TIER_MEAN)) {
+  t.hp /= t.n;
+  t.atk /= t.n;
+  t.gold /= t.n;
+  t.xp /= t.n;
+}
+
+/** base / tier mean, pulled toward 1 so flavour never dominates the curve. */
+function flavour(value: number, mean: number): number {
+  const ratio = mean > 0 ? value / mean : 1;
+  return 1 + (ratio - 1) * ENEMY_TUNING.flavourSpread;
+}
+
 const ELITE_ABILITIES: EnemyInstance['ability'][] = ['lifesteal', 'reflect', 'enrage'];
 
 const ELITE_PREFIX = ['Elite', 'Savage', 'Ancient', 'Dread', 'Warscarred'];
 
 function scaledEnemy(base: EnemyBase, level: number, elite: boolean): EnemyInstance {
+  const T = ENEMY_TUNING;
   const arch = archetypeFor(base.id);
   const traits = ARCHETYPE_TRAITS[arch];
-  const growth = 1 + level * 0.16;
-  const eliteMult = elite ? 2.1 : 1;
-  const hp = Math.max(1, Math.round(base.hpBase * growth * eliteMult * traits.hp));
-  const atk = Math.max(1, Math.round(base.atkBase * growth * (elite ? 1.55 : 1) * traits.atk));
-  const gold = Math.round(base.goldBase * growth * (elite ? 2.2 : 1));
-  const xp = Math.round(base.xpBase * growth * (elite ? 2.2 : 1));
+  const mean = TIER_MEAN[base.tier] ?? { hp: base.hpBase, atk: base.atkBase, gold: base.goldBase, xp: base.xpBase, n: 1 };
+  const eliteHp = T.eliteHp + T.eliteHpPerLevel * level;
+  const eliteAtk = T.eliteAtk + T.eliteAtkPerLevel * level;
+  const hp = Math.max(1, Math.round(nominalHp(level) * flavour(base.hpBase, mean.hp) * traits.hp * (elite ? eliteHp : 1)));
+  const atk = Math.max(1, Math.round(nominalAtk(level) * flavour(base.atkBase, mean.atk) * traits.atk * (elite ? eliteAtk : 1)));
+  const def = Math.max(0, Math.round(nominalDef(level) * traits.def * (elite ? T.eliteDef : 1)));
+  const gold = Math.round(nominalGold(level) * flavour(base.goldBase, mean.gold) * (elite ? T.eliteGold : 1));
+  const xp = Math.round(nominalXp(level) * flavour(base.xpBase, mean.xp) * (elite ? T.eliteXp : 1));
   const prefix = elite ? ELITE_PREFIX[Math.floor(Math.random() * ELITE_PREFIX.length)] : '';
   return {
     id: base.id,
-    name: elite ? `${prefix} ${base.name}` : base.name,
+    name: elite
+      ? t('data.elite_name', { prefix: cname('elite', prefix, prefix), name: cname('enemy', base.id, base.name) })
+      : cname('enemy', base.id, base.name),
     icon: base.icon,
     hp,
     maxHp: hp,
     atk,
-    def: Math.max(0, Math.round((2 + level * 0.35 + base.tier * 1.2) * traits.def)),
+    def,
     goldReward: gold,
     xpReward: xp,
     isBoss: false,
     isElite: elite,
     guaranteedRarity: elite ? 'rare' : undefined,
-    title: elite ? `${traits.tag} • Elite` : traits.tag,
+    title: elite ? t('data.elite_title', { tag: cname('archetype', arch, traits.tag) }) : cname('archetype', arch, traits.tag),
     ability: elite ? ELITE_ABILITIES[Math.floor(Math.random() * ELITE_ABILITIES.length)] : undefined,
     statuses: [],
     shield: 0

@@ -282,7 +282,10 @@ const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi 
 const easeOut = (t: number) => 1 - (1 - t) * (1 - t);
 const easeIn = (t: number) => t * t;
 
-function buildRig(pose: HeroPose, t: number): Rig {
+/** What the hero guards with in the 'defend' pose. */
+export type GuardStyle = 'shield' | 'weapon';
+
+function buildRig(pose: HeroPose, t: number, guard: GuardStyle = 'weapon'): Rig {
   const hipY = -48;
   const chestY = -78;
   let lean = 0;
@@ -344,25 +347,34 @@ function buildRig(pose: HeroPose, t: number): Rig {
       crouch = 2 * k;
       eyeSquint = 0.3 * k;
     } else if (q < 0.58) {
+      // The strike: a committed forward thrust. The weapon arm straightens
+      // out level with the shoulder, the body drives forward, the back foot
+      // stays planted behind and the front knee bends into the lunge.
       const k = easeIn((q - 0.42) / 0.16);
-      lean = -0.26 + 0.72 * k;
-      offX = -5 + 17 * k;
-      armFrontA = -2.68 + 3.5 * k;
-      armFrontK = 0.12 + 0.5 * k;
-      weaponRot = -0.7 + 1.5 * k;
-      legBackA = 0.46 - 0.7 * k;
-      legFrontA = -0.32 + 0.7 * k;
-      crouch = 2 - 4 * k;
+      lean = -0.26 + 0.7 * k;
+      offX = -5 + 21 * k;
+      armFrontA = -2.68 + 4.1 * k;
+      armFrontK = 0.12 - 0.02 * k;
+      weaponRot = -0.7 + 0.85 * k;
+      legBackA = 0.46 - 1.0 * k;
+      legBackK = -0.08 + 0.1 * k;
+      legFrontA = -0.32 + 0.9 * k;
+      legFrontK = 0.12 + 0.5 * k;
+      crouch = 2 + 2 * k;
       eyeSquint = 0.3 + 0.5 * k;
     } else {
-      const k = easeOut((q - 0.58) / 0.42);
-      lean = 0.46 - 0.44 * k;
-      offX = 12 - 12 * k;
-      armFrontA = 0.82 - 1.0 * k;
-      armFrontK = 0.62;
-      weaponRot = 0.8 - 0.8 * k;
-      legBackA = -0.24 + 0.4 * k;
-      legFrontA = 0.38 - 0.52 * k;
+      // Hold the extension for a beat, then recover to the ready stance.
+      const k = easeOut(clamp(((q - 0.58) / 0.42 - 0.25) / 0.75, 0, 1));
+      lean = 0.44 - 0.42 * k;
+      offX = 16 - 16 * k;
+      armFrontA = 1.42 - 1.6 * k;
+      armFrontK = 0.1 + 0.52 * k;
+      weaponRot = 0.15 - 0.15 * k;
+      legBackA = -0.54 + 0.7 * k;
+      legBackK = 0.02 - 0.1 * k;
+      legFrontA = 0.58 - 0.72 * k;
+      legFrontK = 0.62 - 0.5 * k;
+      crouch = 4 - 4 * k;
       eyeSquint = 0.8 - 0.8 * k;
     }
     armBackA = 0.4 - lean * 0.6;
@@ -414,18 +426,32 @@ function buildRig(pose: HeroPose, t: number): Rig {
   } else if (pose === 'defend') {
     const b = Math.sin(t * 3.2);
     crouch = 6;
-    lean = -0.16;
     bob = 1 + b * 0.7;
-    armBackA = -0.95 + b * 0.05;
-    armBackK = 1.5;
-    armFrontA = 0.5;
-    armFrontK = 1.35;
     legBackA = 0.42;
     legFrontA = -0.34;
     legBackK = -0.35;
     legFrontK = -0.3;
     headTilt = 0.1;
     eyeSquint = 0.45;
+    if (guard === 'shield') {
+      // Shield arm punches forward and up so the shield sits squarely in
+      // front of the chest; the weapon hand tucks back, low and ready.
+      lean = -0.1;
+      armBackA = 1.25 + b * 0.03;
+      armBackK = 1.05;
+      armFrontA = -0.55;
+      armFrontK = 0.9;
+      weaponRot = -0.5;
+    } else {
+      // No shield: the weapon is held across the body, blade up over the far
+      // shoulder, the free hand up as a fist in front.
+      lean = -0.14;
+      armFrontA = 0.5 + b * 0.03;
+      armFrontK = 2.0;
+      weaponRot = -1.57;
+      armBackA = 0.6;
+      armBackK = 0.9;
+    }
   }
 
   const hy = hipY + crouch + bob;
@@ -1595,7 +1621,9 @@ export function drawHeroRig(
   opts: DrawOpts
 ) {
   const t = opts.time;
-  const rig = buildRig(pose, t);
+  const offKind = offhandType(look.offhandId);
+  const hasShield = offKind === 'buckler' || offKind === 'kite' || offKind === 'tower';
+  const rig = buildRig(pose, t, hasShield ? 'shield' : 'weapon');
   const style = armorStyle(look.armorId, look.armorRarity);
   const armorMat = material(style.tone, look.armorRarity, style.metal);
   const bootsMat = material(
@@ -1630,7 +1658,9 @@ export function drawHeroRig(
   drawArm(c, rig.armBack, style, armorMat, true, gloveTone);
 
   // pole weapons rest behind the body
-  const poleBehind = POLE.has(fam!) && pose !== 'attack' && pose !== 'cast';
+  // Pole arms rest behind the body except when in use — and a guard without
+  // a shield brings the pole across the body like any other weapon.
+  const poleBehind = POLE.has(fam!) && pose !== 'attack' && pose !== 'cast' && !(pose === 'defend' && !hasShield);
   if (fam && poleBehind) {
     c.save();
     c.translate(rig.armBack.c.x, rig.armBack.c.y);
@@ -1659,7 +1689,8 @@ export function drawHeroRig(
   if (off !== 'none') {
     c.save();
     c.translate(rig.armBack.c.x + 3, rig.armBack.c.y + 2);
-    c.rotate(pose === 'defend' ? -0.15 : 0.08 + Math.sin(t * 2) * 0.03);
+    // Guarding: the shield squares up toward the threat.
+    c.rotate(pose === 'defend' ? (hasShield ? -0.08 : -0.15) : 0.08 + Math.sin(t * 2) * 0.03);
     drawOffhand(c, off, offMat, t);
     c.restore();
   }
@@ -1698,7 +1729,8 @@ export function drawHeroRig(
         c.lineWidth = 5 * k + 1;
         c.lineCap = 'round';
         c.beginPath();
-        c.arc(8, rig.chestY + 4, 34, -Math.PI * 0.85, -Math.PI * 0.1);
+        // Sweep from over the shoulder down into the thrust line.
+        c.arc(12, rig.chestY + 2, 42, -Math.PI * 0.72, 0.06);
         c.stroke();
         c.restore();
       }
@@ -1725,13 +1757,17 @@ export function drawHeroRig(
     c.globalCompositeOperation = 'source-atop';
     c.globalAlpha = clamp(opts.flash, 0, 1) * 0.85;
     c.fillStyle = '#fff';
-    c.fillRect(-60, -120, 120, 126);
+    c.fillRect(-70, -124, 170, 130);
     c.restore();
   }
   c.restore();
 }
 
-/** Silhouette bounds used for portraits and for the offscreen cache size. */
-export const HERO_BOUNDS = { w: 76, h: 116 };
+/**
+ * Silhouette bounds used for portraits and for the offscreen cache size.
+ * `h` is the standing height (portraits scale on it); `w` is the half-extent
+ * budget that a full attack thrust (weapon included) stays within.
+ */
+export const HERO_BOUNDS = { w: 92, h: 116 };
 
 export { blobPath, limb, drawBlade };

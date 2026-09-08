@@ -1,4 +1,5 @@
-import type { BaseItem, EquipSlot } from '../types';
+import type { BaseItem, EquipSlot, EquipmentSet, StatKey } from '../types';
+import { EQUIP_SLOTS } from '../types';
 
 /**
  * Base item pool. Each base combines with a rolled Rarity tier at drop time,
@@ -214,6 +215,42 @@ export const BASE_ITEMS: BaseItem[] = [
 
 /* ------------------------------------------------------------------ sets -- */
 
+/**
+ * The visual flavour of a set. The combat screen keys attack trails and parry
+ * flashes off this: an Emberforged weapon slashes fire, a Tidecaller shield
+ * parries with a wave.
+ */
+export type SetElement = 'beast' | 'metal' | 'fire' | 'water' | 'void' | 'holy';
+
+/**
+ * Special behaviours a set can grant. Implemented by the combat engine:
+ *   first_strike  — your first attack of a fight deals +50% and applies Bleed (2)
+ *   iron_brace    — Brace grants double shield and reflects 30% of blocked damage
+ *   ember_strikes — every damaging attack applies Burn (1) for 2 turns
+ *   tide_parry    — a perfect parry heals 8% max HP and grants a small shield
+ *   void_hunger   — killing blows restore 20% HP and 3 energy; abilities cost 1 less
+ *   dawn_blessing — every fight starts with Regen (2) for 3 turns and Fortify (1)
+ */
+export type SetProc =
+  | 'first_strike'
+  | 'iron_brace'
+  | 'ember_strikes'
+  | 'tide_parry'
+  | 'void_hunger'
+  | 'dawn_blessing';
+
+export interface SetBonus {
+  /** Pieces worn needed to unlock this bonus. */
+  pieces: number;
+  /** Human description shown in the collection view. */
+  label: string;
+  /** Flat stat additions. */
+  stats?: Partial<Record<StatKey, number>>;
+  /** Percentage multipliers on the derived stat (0.1 = +10%). */
+  statsPct?: Partial<Record<StatKey, number>>;
+  proc?: SetProc;
+}
+
 export interface ItemSet {
   id: string;
   name: string;
@@ -222,20 +259,65 @@ export interface ItemSet {
   level: number;
   /** Flavour line shown on the collection card. */
   flavor: string;
+  element: SetElement;
+  /** Ordered by `pieces`, ascending. */
+  bonuses: SetBonus[];
 }
 
 /**
  * Relic sets. Every set base rolls one EXTRA affix on top of its rarity's
- * affix count (see `rollItem`), which is what makes hunting a set worthwhile —
- * a set rare rolls like an epic. The collection view tracks pieces owned/worn.
+ * affix count (see `rollItem`), and wearing pieces together unlocks the
+ * bonuses below. The collection view tracks pieces owned/worn.
  */
 export const ITEM_SETS: ItemSet[] = [
-  { id: 'set_wolf', name: 'Wolfpack', icon: '🐺', level: 6, flavor: 'The pack runs first, and eats first.' },
-  { id: 'set_iron', name: 'Ironbound', icon: '⚙️', level: 13, flavor: 'Forged shut. Nothing gets in.' },
-  { id: 'set_ember', name: 'Emberforged', icon: '🔥', level: 20, flavor: 'Still warm from the forge that broke.' },
-  { id: 'set_tide', name: 'Tidecaller', icon: '🌊', level: 27, flavor: 'The sea answers those who ask twice.' },
-  { id: 'set_void', name: 'Voidtouched', icon: '🌑', level: 34, flavor: 'It remembers being nothing.' },
-  { id: 'set_dawn', name: 'Dawnward', icon: '🌅', level: 42, flavor: 'The last light, worn as armour.' }
+  {
+    id: 'set_wolf', name: 'Wolfpack', icon: '🐺', level: 6, element: 'beast',
+    flavor: 'The pack runs first, and eats first.',
+    bonuses: [
+      { pieces: 2, label: '+6% crit chance, +4 speed', stats: { critChance: 0.06, speed: 4 } },
+      { pieces: 4, label: 'First Blood — your opening attack deals +50% and applies Bleed (2)', proc: 'first_strike' }
+    ]
+  },
+  {
+    id: 'set_iron', name: 'Ironbound', icon: '⚙️', level: 13, element: 'metal',
+    flavor: 'Forged shut. Nothing gets in.',
+    bonuses: [
+      { pieces: 2, label: '+12% defense', statsPct: { def: 0.12 } },
+      { pieces: 4, label: 'Iron Wall — Brace grants double shield and reflects 30% of blocked damage', proc: 'iron_brace' }
+    ]
+  },
+  {
+    id: 'set_ember', name: 'Emberforged', icon: '🔥', level: 20, element: 'fire',
+    flavor: 'Still warm from the forge that broke.',
+    bonuses: [
+      { pieces: 2, label: '+20% crit damage', stats: { critDamage: 0.2 } },
+      { pieces: 4, label: 'Cinder Edge — every attack applies Burn (1) for 2 turns', proc: 'ember_strikes' }
+    ]
+  },
+  {
+    id: 'set_tide', name: 'Tidecaller', icon: '🌊', level: 27, element: 'water',
+    flavor: 'The sea answers those who ask twice.',
+    bonuses: [
+      { pieces: 2, label: '+10% max HP', statsPct: { hp: 0.1 } },
+      { pieces: 4, label: 'Undertow — a perfect parry heals 8% HP and raises a shield', proc: 'tide_parry' }
+    ]
+  },
+  {
+    id: 'set_void', name: 'Voidtouched', icon: '🌑', level: 34, element: 'void',
+    flavor: 'It remembers being nothing.',
+    bonuses: [
+      { pieces: 2, label: '+4% lifesteal', stats: { lifesteal: 0.04 } },
+      { pieces: 4, label: 'Hunger — kills restore 20% HP and 3 energy; abilities cost 1 less', proc: 'void_hunger' }
+    ]
+  },
+  {
+    id: 'set_dawn', name: 'Dawnward', icon: '🌅', level: 42, element: 'holy',
+    flavor: 'The last light, worn as armour.',
+    bonuses: [
+      { pieces: 2, label: '+12% gold find, +8% max HP', stats: { goldFind: 0.12 }, statsPct: { hp: 0.08 } },
+      { pieces: 4, label: 'First Light — every fight opens with Regen (2) and Fortify (1)', proc: 'dawn_blessing' }
+    ]
+  }
 ];
 
 export function setById(id: string | undefined): ItemSet | null {
@@ -245,6 +327,38 @@ export function setById(id: string | undefined): ItemSet | null {
 
 export function setPieces(setId: string): BaseItem[] {
   return BASE_ITEMS.filter(b => b.setId === setId);
+}
+
+/** How many pieces of each set are currently worn. */
+export function wornSetCounts(eq: EquipmentSet): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const slot of EQUIP_SLOTS) {
+    const setId = eq[slot]?.setId;
+    if (setId) counts.set(setId, (counts.get(setId) ?? 0) + 1);
+  }
+  return counts;
+}
+
+export interface ActiveSetBonus {
+  set: ItemSet;
+  worn: number;
+  bonus: SetBonus;
+}
+
+/** Every set bonus whose piece requirement the worn gear meets. */
+export function activeSetBonuses(eq: EquipmentSet): ActiveSetBonus[] {
+  const out: ActiveSetBonus[] = [];
+  for (const [setId, worn] of wornSetCounts(eq)) {
+    const set = setById(setId);
+    if (!set) continue;
+    for (const bonus of set.bonuses) if (worn >= bonus.pieces) out.push({ set, worn, bonus });
+  }
+  return out;
+}
+
+/** The element of the worn item in a slot, for attack/parry effects. */
+export function elementOf(eq: EquipmentSet, slot: EquipSlot): SetElement | null {
+  return setById(eq[slot]?.setId)?.element ?? null;
 }
 
 /* --------------------------------------------------------------- indexes -- */

@@ -21,6 +21,7 @@ export type ConsumableEffect =
   | { kind: 'buffDef'; value: number; turns: number }
   | { kind: 'damage'; value: number }
   | { kind: 'luck'; value: number }
+  | { kind: 'energy'; value: number }
   | { kind: 'cleanse' };
 
 export interface ConsumableDef extends Consumable {
@@ -109,6 +110,17 @@ export const CONSUMABLES: ConsumableDef[] = [
     effect: { kind: 'cleanse' },
     minLevel: 4,
     tone: 'common'
+  },
+  {
+    id: 'ether',
+    name: 'Ether',
+    icon: '🔷',
+    description: 'Restores 6 energy in battle.',
+    price: 120,
+    where: 'combat',
+    effect: { kind: 'energy', value: 6 },
+    minLevel: 4,
+    tone: 'uncommon'
   },
   {
     id: 'tome_wisdom',

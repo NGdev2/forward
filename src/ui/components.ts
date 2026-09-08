@@ -8,6 +8,7 @@
 
 import type { Rarity } from '../game/types';
 import { el, cx } from './dom';
+import { t } from '../i18n';
 
 /* -------------------------------------------------------------------- bar -- */
 
@@ -198,7 +199,7 @@ export function sheet(host: HTMLElement, opts: SheetOptions = {}): SheetHandle {
 
   if (opts.title || opts.closable !== false) {
     const hd = el('div', { class: 'sheet-hd' }, opts.title ?? '');
-    if (opts.closable !== false) hd.appendChild(iconButton('✕', 'Close', () => handle.close()));
+    if (opts.closable !== false) hd.appendChild(iconButton('✕', t('common.close'), () => handle.close()));
     panelEl.appendChild(hd);
   }
   panelEl.append(body, foot);
@@ -237,12 +238,12 @@ export function sheet(host: HTMLElement, opts: SheetOptions = {}): SheetHandle {
 
 /* --------------------------------------------------------------- switches -- */
 
-export function toggle(on: boolean, onChange: (next: boolean) => void, label = 'Toggle'): HTMLButtonElement {
+export function toggle(on: boolean, onChange: (next: boolean) => void, label?: string): HTMLButtonElement {
   const node = el('button', {
     type: 'button',
     class: 'switch',
     'aria-pressed': on ? 'true' : 'false',
-    'aria-label': label
+    'aria-label': label ?? t('common.toggle')
   });
   node.appendChild(el('span', {}));
   node.addEventListener('click', () => {
@@ -251,6 +252,121 @@ export function toggle(on: boolean, onChange: (next: boolean) => void, label = '
     onChange(next);
   });
   return node;
+}
+
+/* ---------------------------------------------------------------- slider -- */
+
+export interface SliderOptions {
+  min?: number;
+  max?: number;
+  step?: number;
+  /** Accessible name. */
+  label?: string;
+  /** Formats the value caption; defaults to the integer. */
+  format?: (v: number) => string;
+  /** Fires on every move (drag). */
+  onInput?: (v: number) => void;
+  /** Fires once on release. */
+  onChange?: (v: number) => void;
+}
+
+export interface SliderHandle {
+  root: HTMLDivElement;
+  input: HTMLInputElement;
+  set(v: number): void;
+  get value(): number;
+}
+
+/**
+ * Range input styled with tokens: label on the left, live value on the right,
+ * a filled track and a ≥28px thumb. The fill is driven by `--pct`.
+ */
+export function slider(title: string, value: number, opts: SliderOptions = {}): SliderHandle {
+  const min = opts.min ?? 0;
+  const max = opts.max ?? 100;
+  const step = opts.step ?? 1;
+  const fmt = opts.format ?? ((v: number) => String(Math.round(v)));
+
+  const input = el('input', {
+    type: 'range',
+    class: 'slider-input',
+    min,
+    max,
+    step,
+    value,
+    'aria-label': opts.label ?? title
+  });
+  const val = el('b', { class: 'slider-val num' }, fmt(value));
+  const track = el('div', { class: 'slider-track' }, input);
+  const root = el(
+    'div',
+    { class: 'slider' },
+    el('div', { class: 'slider-hd' }, el('span', { class: 'slider-title' }, title), val),
+    track
+  );
+
+  const paint = (v: number) => {
+    const pct = max > min ? ((v - min) / (max - min)) * 100 : 0;
+    root.style.setProperty('--pct', `${pct}%`);
+    val.textContent = fmt(v);
+  };
+  paint(value);
+
+  input.addEventListener('input', () => {
+    const v = Number(input.value);
+    paint(v);
+    opts.onInput?.(v);
+  });
+  input.addEventListener('change', () => opts.onChange?.(Number(input.value)));
+
+  return {
+    root,
+    input,
+    set(v) {
+      input.value = String(v);
+      paint(v);
+    },
+    get value() {
+      return Number(input.value);
+    }
+  };
+}
+
+/* ------------------------------------------------------------- segmented -- */
+
+export interface SegmentedOption<T extends string> {
+  id: T;
+  label: string;
+}
+
+/** Pill-style single choice control, e.g. language. */
+export function segmented<T extends string>(
+  options: SegmentedOption<T>[],
+  active: T,
+  onChange: (id: T) => void,
+  label?: string
+): HTMLDivElement {
+  const root = el('div', { class: 'segmented', role: 'radiogroup', 'aria-label': label ?? t('common.choose') });
+  const buttons = new Map<T, HTMLButtonElement>();
+  for (const o of options) {
+    const b = el(
+      'button',
+      { type: 'button', class: cx('segmented-btn', o.id === active && 'is-active'), role: 'radio', 'aria-checked': o.id === active ? 'true' : 'false' },
+      o.label
+    );
+    b.addEventListener('click', () => {
+      if (b.classList.contains('is-active')) return;
+      for (const [id, other] of buttons) {
+        const on = id === o.id;
+        other.classList.toggle('is-active', on);
+        other.setAttribute('aria-checked', on ? 'true' : 'false');
+      }
+      onChange(o.id);
+    });
+    buttons.set(o.id, b);
+    root.appendChild(b);
+  }
+  return root;
 }
 
 /** Settings-style row: title, description and a control on the right. */

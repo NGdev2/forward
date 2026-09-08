@@ -1,5 +1,5 @@
 import type { GameState } from '../game/state';
-import type { AudioKit, FxKit, SpriteKit } from '../render/api';
+import type { AudioKit, FxKit, MusicKit, SpriteKit } from '../render/api';
 import type { CombatResult, EncounterNode, EnemyInstance, ItemInstance, Rarity } from '../game/types';
 
 export type ScreenId = 'title' | 'run' | 'combat' | 'reward' | 'inventory' | 'shop';
@@ -12,6 +12,20 @@ export interface ScreenParams {
 export interface CombatParams extends ScreenParams {
   enemy: EnemyInstance;
   node?: EncounterNode;
+}
+
+/** Params handed to the inventory screen. */
+export interface InventoryParams extends ScreenParams {
+  /** Where "back" returns to. Defaults to the road. */
+  from?: ScreenId;
+  /** Open on a specific tab. */
+  tab?: 'bag' | 'stats' | 'sets' | 'items';
+}
+
+/** Params handed to the shop screen. */
+export interface ShopParams extends ScreenParams {
+  /** Open on a specific tab, e.g. 'sell' when returning from the bag. */
+  tab?: string;
 }
 
 /**
@@ -65,6 +79,7 @@ export interface GameContext {
   sprites: SpriteKit;
   fx: FxKit;
   audio: AudioKit;
+  music: MusicKit;
   goto(id: ScreenId, params?: ScreenParams): void;
   toast(message: string, kind?: ToastKind): void;
   /** Persists state; call after anything meaningful changes. */

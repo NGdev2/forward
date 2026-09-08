@@ -1,5 +1,6 @@
 /* ============================================================================
- * SHOP — wayside trader. Gear / supplies / gems.
+ * SHOP — wayside trader. Gear / supplies / relics / sell / gems.
+ * Gold OR gems pay for gear and supplies; relics are gem-only.
  * The gems tab is a monetisation *surface* only: no billing SDK is wired up.
  * ========================================================================== */
 
@@ -19,9 +20,10 @@
   padding: calc(var(--safe-top) + var(--sp-2)) var(--sp-3) var(--sp-2);
   border-bottom: 1px solid var(--border);
 }
-.shop-top .topbar-title { flex: 1; }
+.shop-top .topbar-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .shop-purse { display: flex; gap: var(--sp-1); }
 .shop-purse .chip { font-size: var(--fs-xs); padding: 3px 8px; }
+.shop-bag { font-size: 20px; }
 
 .shop-greet {
   display: flex;
@@ -55,7 +57,8 @@
   border: 1px solid var(--border);
 }
 .seg-btn {
-  padding: 8px 4px;
+  min-height: 40px;
+  padding: 8px 2px;
   border: 0;
   border-radius: var(--radius-sm);
   background: none;
@@ -118,6 +121,16 @@
   color: var(--text-faint);
   text-align: center;
 }
+.shop-cell-price {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  font-family: var(--font-num);
+  font-size: 10px;
+  white-space: nowrap;
+}
+.shop-cell-price b { color: var(--text-2); }
+.shop-cell-price b.is-short { color: var(--text-faint); }
 
 /* -------------------------------------------------------------- supplies -- */
 
@@ -149,7 +162,77 @@
   text-transform: uppercase;
   color: var(--text-faint);
 }
-.shop-buy { white-space: nowrap; font-family: var(--font-num); }
+.shop-buy {
+  white-space: nowrap;
+  font-family: var(--font-num);
+  min-height: 44px;
+}
+/* Two currencies per row: gold on top, gems below. */
+.shop-pay { display: flex; flex-direction: column; gap: 4px; }
+.shop-pay .shop-buy { min-height: 40px; min-width: 76px; padding: 0 var(--sp-2); }
+
+/* ---------------------------------------------------------------- relics -- */
+
+.shop-relic {
+  --rc: var(--r-epic);
+  --el: var(--accent);
+  display: grid;
+  grid-template-columns: 72px 1fr auto;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--rc) 55%, transparent);
+  background:
+    radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--rc) 16%, transparent), transparent 60%),
+    var(--grad-surface);
+  box-shadow: var(--sh-2);
+}
+.shop-relic .item-tile { width: 72px; }
+.shop-relic-set { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.shop-relic-set i { font-style: normal; font-size: var(--fs-xs); color: var(--el); font-weight: var(--fw-bold); }
+.shop-relic-set em { font-style: normal; font-family: var(--font-num); font-size: var(--fs-2xs); color: var(--text-2); }
+.shop-buy-gem {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 76px;
+  padding: 0 var(--sp-2);
+  line-height: 1.1;
+}
+.shop-buy-gem u { text-decoration: none; font-size: 9px; opacity: 0.75; letter-spacing: var(--tr-caps); text-transform: uppercase; }
+.shop-sold {
+  font-size: var(--fs-2xs);
+  letter-spacing: var(--tr-label);
+  text-transform: uppercase;
+  color: var(--text-faint);
+  padding: 0 var(--sp-2);
+}
+
+/* ------------------------------------------------------------------ sell -- */
+
+.shop-junk {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+}
+.shop-junk span { display: flex; flex-direction: column; line-height: var(--lh-snug); }
+.shop-junk span b { font-family: var(--font-num); color: var(--text); }
+.shop-junk span u { text-decoration: none; font-size: var(--fs-2xs); color: var(--text-faint); }
+.shop-junk-btn { min-height: 44px; white-space: nowrap; }
+.shop-sell-row.is-junk .shop-row-text u { color: var(--text-faint); }
+.shop-sell-row .shop-row-text b {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 /* ------------------------------------------------------------------ gems -- */
 
@@ -157,9 +240,11 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: var(--sp-2);
+  padding-top: var(--sp-2);
 }
 .shop-pack {
   position: relative;
+  overflow: visible; /* the "+10%" / "Best value" tag hangs above the card */
   display: flex;
   flex-direction: column;
   align-items: center;

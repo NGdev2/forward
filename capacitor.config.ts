@@ -1,10 +1,10 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
-// NOTE: "com.forward.runner" is a placeholder app id. Before publishing to
-// Google Play, pick a real reverse-domain application id that you (or your
-// org) actually own, e.g. "com.yourcompany.forward", and update it here.
+// The application id is PERMANENT once the first build is uploaded to Google
+// Play. Change it here and in android/app/build.gradle (applicationId) before
+// that first upload if you want a different one.
 const config: CapacitorConfig = {
-  appId: 'com.forward.runner',
+  appId: 'com.ngdev.forward',
   appName: 'Forward',
   webDir: 'dist',
   server: {

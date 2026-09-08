@@ -53,7 +53,7 @@ const AFFIX_POOL: AffixDef[] = [
     statKey: 'hp',
     min: 5,
     max: 16,
-    scale: 1.7,
+    scale: 1.2,
     weight: 100,
     slotBias: { armor: 2.0, helm: 1.6, trinket: 1.3, weapon: 0.4 }
   },
@@ -61,7 +61,7 @@ const AFFIX_POOL: AffixDef[] = [
     statKey: 'critChance',
     min: 0.01,
     max: 0.035,
-    scale: 0.0018,
+    scale: 0.0008,
     weight: 62,
     slotBias: { weapon: 1.8, trinket: 1.6, helm: 1.1, armor: 0.5 }
   },
@@ -69,7 +69,7 @@ const AFFIX_POOL: AffixDef[] = [
     statKey: 'critDamage',
     min: 0.05,
     max: 0.16,
-    scale: 0.0075,
+    scale: 0.004,
     weight: 62,
     slotBias: { weapon: 2.0, trinket: 1.3, offhand: 1.2, armor: 0.5 }
   },
@@ -85,7 +85,7 @@ const AFFIX_POOL: AffixDef[] = [
     statKey: 'lifesteal',
     min: 0.008,
     max: 0.03,
-    scale: 0.0014,
+    scale: 0.0004,
     weight: 34,
     slotBias: { weapon: 2.0, trinket: 1.5, armor: 0.7 }
   },
@@ -106,6 +106,12 @@ function affixMult(rarity: Rarity): number {
   const idx = Math.max(0, RARITY_TIERS.findIndex(r => r.id === rarity));
   return 0.92 + idx * 0.12; // common 0.92 → mythic 1.52
 }
+
+/**
+ * Per-ilvl growth of the primary stat. Base items already step up with their
+ * minLevel, so this only needs to keep an old base competitive for a few levels.
+ */
+const ILVL_GROWTH = 0.04;
 
 /** Primary stat variance: ±16% around the nominal value. */
 const PRIMARY_SPREAD = 0.16;
@@ -193,7 +199,7 @@ export function affixCountFor(rarity: Rarity, isSet: boolean): number {
 
 /* ---------------------------------------------------------------- naming -- */
 
-const PREFIX: Record<StatKey, string> = {
+export const PREFIX: Record<StatKey, string> = {
   atk: 'Vicious',
   def: 'Sturdy',
   hp: 'Vital',
@@ -204,7 +210,7 @@ const PREFIX: Record<StatKey, string> = {
   speed: 'Swift'
 };
 
-const SUFFIX: Record<StatKey, string> = {
+export const SUFFIX: Record<StatKey, string> = {
   atk: 'of Fury',
   def: 'of Stone',
   hp: 'of the Bear',
@@ -260,7 +266,7 @@ function build(base: BaseItem, rarityId: Rarity, ilvl: number): ItemInstance {
       base.statKey,
       base.baseValue *
         rarity.mult *
-        (1 + ilvl * 0.11) *
+        (1 + ilvl * ILVL_GROWTH) *
         (1 - PRIMARY_SPREAD + 2 * PRIMARY_SPREAD * pq)
     )
   };
@@ -340,7 +346,7 @@ export function makeItem(baseId: string, rarityId: Rarity, ilvl: number): ItemIn
 export function itemQuality(item: ItemInstance): number {
   const base = baseItemById(item.baseId);
   const rarity = rarityById(item.rarity);
-  const nominal = base ? base.baseValue * rarity.mult * (1 + item.ilvl * 0.11) : item.primary.value;
+  const nominal = base ? base.baseValue * rarity.mult * (1 + item.ilvl * ILVL_GROWTH) : item.primary.value;
   let min = nominal * (1 - PRIMARY_SPREAD) * STAT_WEIGHT[item.primary.statKey];
   let max = nominal * (1 + PRIMARY_SPREAD) * STAT_WEIGHT[item.primary.statKey];
   let actual = item.primary.value * STAT_WEIGHT[item.primary.statKey];
@@ -387,7 +393,11 @@ export function compareItems(candidate: ItemInstance, current: ItemInstance | nu
   return out.sort((x, y) => Math.abs(y.diff) * STAT_WEIGHT[y.statKey] - Math.abs(x.diff) * STAT_WEIGHT[x.statKey]);
 }
 
-/** Full display name including any rolled prefix/suffix. */
+/**
+ * Full English display name including any rolled prefix/suffix (the saved
+ * `name`). Screens should use `itemDisplayName` from `src/i18n` instead: it
+ * rebuilds the name in the current language from baseId + affixes.
+ */
 export function itemDisplayName(item: ItemInstance): string {
   return item.name;
 }
@@ -410,7 +420,7 @@ export function rollShopStock(level: number, count = 6): ItemInstance[] {
 }
 
 export function startingKit(): ItemInstance[] {
-  const ids = ['w_dagger', 'a_leather'];
+  const ids = ['w_dagger', 'a_leather', 'o_buckler'];
   return ids
     .map(id => makeItem(id, 'common', 1))
     .filter((i): i is ItemInstance => i !== null);

@@ -189,6 +189,10 @@
   flex-direction: column;
   gap: var(--sp-3);
 }
+/* Cards must never shrink to fit the panel — that is what made the stats,
+   sets and items tabs look "unscrollable": every card was being squashed
+   (overflow:hidden lets a flex child go below its content height). */
+.inv-panel > * { flex: none; }
 
 /* ------------------------------------------------------------------- bag -- */
 
@@ -414,6 +418,32 @@
   display: block;
   margin-bottom: 2px;
 }
+/* Set block inside the item sheet: name, element pill, worn count, bonuses. */
+.detail-set {
+  --el: var(--accent);
+  text-transform: none;
+  letter-spacing: normal;
+  border-color: color-mix(in srgb, var(--el) 40%, transparent);
+}
+.detail-set-head { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; margin-bottom: 2px; }
+.detail-set-head b { display: inline; margin: 0; color: var(--el); font-size: var(--fs-sm); }
+.detail-set-worn {
+  font-style: normal;
+  margin-left: auto;
+  font-family: var(--font-num);
+  font-size: var(--fs-2xs);
+  color: var(--text-2);
+}
+.detail-set-bonuses { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
+.detail-set-bonuses em {
+  font-style: normal;
+  font-size: var(--fs-2xs);
+  color: var(--text-faint);
+  padding-left: 8px;
+  border-left: 2px solid var(--border);
+  line-height: var(--lh-snug);
+}
+.detail-set-bonuses em.is-on { color: var(--el); border-left-color: var(--el); }
 
 .detail-compare { display: flex; flex-direction: column; gap: 2px; }
 .cmp-head {
@@ -502,7 +532,15 @@
   padding-top: var(--sp-3);
   flex: none;
 }
-.sheet-actions .btn { flex: 1; }
+.sheet-actions .btn { flex: 1; min-width: 0; padding-inline: var(--sp-2); }
+/* Two-line "need N more" label for a disabled buy button. */
+.btn-need { display: flex; flex-direction: column; align-items: center; line-height: 1.1; }
+.btn-need i {
+  font-style: normal;
+  font-size: 9px;
+  letter-spacing: var(--tr-caps);
+  opacity: 0.7;
+}
 
 .picker-head {
   font-size: var(--fs-sm);
@@ -564,36 +602,262 @@
   line-height: var(--lh-snug);
 }
 .set-intro b { font-size: var(--fs-md); color: var(--text); font-family: var(--font-display); }
+.inv-empty { align-items: center; text-align: center; padding: var(--sp-6) var(--sp-4); }
+.inv-empty i { font-style: normal; font-size: 40px; opacity: 0.4; filter: grayscale(1); }
 
-.set-card { padding: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2); opacity: 0.72; }
-.set-card.is-active { opacity: 1; border-color: var(--accent-dim); }
-.set-head { display: grid; grid-template-columns: auto 1fr auto; gap: var(--sp-2); align-items: center; }
-.set-icon { font-size: 24px; }
-.set-titles { display: flex; flex-direction: column; min-width: 0; }
-.set-titles b { font-size: var(--fs-sm); }
-.set-titles span { font-size: var(--fs-2xs); color: var(--text-mute); }
-.set-count { font-family: var(--font-num); font-size: var(--fs-sm); color: var(--accent); }
-.set-pieces { display: flex; flex-wrap: wrap; gap: 4px; }
-.set-piece {
+/* Element pill (data/items.ts SetElement → --el-* tokens). */
+.el-badge {
+  --el: var(--accent);
+  --el-soft: var(--accent-glow);
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  padding: 2px 7px;
+  height: 20px;
+  padding: 0 8px;
   border-radius: var(--radius-pill);
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--el) 55%, transparent);
+  background: var(--el-soft);
+  color: var(--el);
   font-size: var(--fs-2xs);
-  color: var(--text-faint);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tr-caps);
+  text-transform: uppercase;
+  white-space: nowrap;
+  line-height: 1;
 }
-.set-piece i { font-style: normal; filter: grayscale(1); opacity: 0.5; }
-.set-piece.is-owned { color: var(--text-2); border-color: var(--border-hi); }
-.set-piece.is-owned i { filter: none; opacity: 1; }
-.set-piece.is-worn { color: var(--accent); border-color: var(--accent-dim); background: rgba(69, 214, 194, 0.1); }
-.set-piece.is-worn i { filter: none; opacity: 1; }
+
+/* A set card is a collapsible: the header is the only tap target, the body
+   animates open via a 0fr → 1fr grid row (no JS height measuring). */
+.set-card {
+  --el: var(--accent);
+  --el-soft: var(--accent-glow);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  opacity: 0.78;
+  overflow: hidden;
+  transition: opacity var(--dur), border-color var(--dur);
+}
+.set-card.is-active { opacity: 1; border-color: color-mix(in srgb, var(--el) 45%, transparent); }
+.set-card.is-open { opacity: 1; }
+.set-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: var(--sp-2);
+  align-items: center;
+  width: 100%;
+  min-height: 56px;
+  padding: var(--sp-2) var(--sp-3);
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.set-head:active { background: rgba(255, 255, 255, 0.04); }
+.set-icon { font-size: 24px; line-height: 1; }
+.set-titles { display: flex; flex-direction: column; min-width: 0; line-height: var(--lh-snug); }
+.set-titles b { font-size: var(--fs-sm); color: var(--text); }
+.set-titles span {
+  font-size: var(--fs-2xs);
+  color: var(--text-mute);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.set-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.set-count { font-family: var(--font-num); font-size: var(--fs-md); color: var(--el); line-height: 1; }
+.set-count i { font-style: normal; font-size: var(--fs-2xs); color: var(--text-faint); }
+.set-chev {
+  color: var(--text-mute);
+  font-size: 14px;
+  transition: transform var(--dur-slow) var(--ease-out);
+}
+.set-card.is-open .set-chev { transform: rotate(180deg); }
+
+.set-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--dur-slow) var(--ease-out);
+}
+.set-card.is-open .set-body { grid-template-rows: 1fr; }
+.set-body-in {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-3);
+  opacity: 0;
+  transition: opacity var(--dur) ease, padding var(--dur-slow) var(--ease-out);
+}
+.set-card.is-open .set-body-in { padding-bottom: var(--sp-3); opacity: 1; }
+
+.set-pieces { display: flex; flex-direction: column; gap: 4px; }
+.set-piece {
+  --rc: var(--text-faint);
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 44px;
+  padding: 4px var(--sp-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text-dim);
+  text-align: left;
+  cursor: pointer;
+}
+.set-piece:disabled { cursor: default; opacity: 0.6; }
+.sp-icon { font-style: normal; font-size: 20px; text-align: center; filter: grayscale(1); opacity: 0.45; }
+.sp-text { display: flex; flex-direction: column; min-width: 0; line-height: var(--lh-snug); }
+.sp-text b { font-size: var(--fs-xs); color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sp-text span { font-size: var(--fs-2xs); color: var(--text-faint); }
+.sp-state {
+  font-style: normal;
+  font-size: var(--fs-2xs);
+  letter-spacing: var(--tr-caps);
+  text-transform: uppercase;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+.set-piece.is-owned { border-color: var(--border-hi); }
+.set-piece.is-owned .sp-icon,
+.set-piece.is-worn .sp-icon { filter: none; opacity: 1; }
+.set-piece.is-owned .sp-text b { color: var(--rc); }
+.set-piece.is-owned .sp-state { color: var(--text-2); }
+.set-piece.is-worn {
+  border-color: color-mix(in srgb, var(--el) 55%, transparent);
+  background: linear-gradient(90deg, var(--el-soft), transparent 70%);
+}
+.set-piece.is-worn .sp-text b { color: var(--rc); }
+.set-piece.is-worn .sp-state { color: var(--el); }
+
+.set-bonuses { display: flex; flex-direction: column; gap: 4px; }
+.set-bonus {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 6px var(--sp-2);
+  border-radius: var(--radius-xs);
+  border: 1px dashed var(--border);
+  font-size: var(--fs-xs);
+  color: var(--text-mute);
+  line-height: var(--lh-snug);
+}
+.set-bonus b { font-family: var(--font-num); font-size: var(--fs-2xs); color: var(--text-faint); }
+.set-bonus em {
+  font-style: normal;
+  font-size: var(--fs-2xs);
+  letter-spacing: var(--tr-caps);
+  text-transform: uppercase;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+.set-bonus span i { font-style: normal; color: var(--text-2); margin-right: 4px; }
+.set-bonus.is-on {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--el) 55%, transparent);
+  background: var(--el-soft);
+  color: var(--text);
+}
+.set-bonus.is-on b,
+.set-bonus.is-on em { color: var(--el); }
+
+/* --------------------------------------------------------------- talents -- */
+
+.talent-card { gap: var(--sp-2); }
+.talent-card.has-points { border-color: var(--accent-dim); box-shadow: var(--glow-accent); }
+.talent-head { display: flex; align-items: center; justify-content: space-between; }
+.talent-head .card-head { margin: 0; }
+.talent-points { display: flex; align-items: baseline; gap: 6px; }
+.talent-points b {
+  font-family: var(--font-num);
+  font-size: var(--fs-2xl);
+  line-height: 1;
+  color: var(--text-mute);
+}
+.talent-card.has-points .talent-points b { color: var(--accent-hi); text-shadow: 0 0 14px var(--accent-glow); }
+.talent-points i {
+  font-style: normal;
+  font-size: var(--fs-2xs);
+  letter-spacing: var(--tr-caps);
+  text-transform: uppercase;
+  color: var(--text-mute);
+}
+.talent-row {
+  display: grid;
+  grid-template-columns: 26px 1fr auto 46px;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 48px;
+  padding: 4px 0 4px var(--sp-1);
+  border-top: 1px solid var(--border);
+}
+.t-icon { font-style: normal; font-size: 18px; text-align: center; opacity: 0.9; }
+.t-text { display: flex; flex-direction: column; min-width: 0; line-height: var(--lh-snug); }
+.t-text b { font-size: var(--fs-sm); color: var(--text); }
+.t-text span { font-size: var(--fs-2xs); color: var(--text-mute); }
+.t-rank { display: flex; flex-direction: column; align-items: center; line-height: 1; }
+.t-rank b { font-family: var(--font-num); font-size: var(--fs-lg); color: var(--text-2); }
+.t-rank i { font-style: normal; font-size: 8.5px; letter-spacing: var(--tr-label); text-transform: uppercase; color: var(--text-faint); }
+.talent-plus {
+  min-height: 44px;
+  width: 46px;
+  padding: 0;
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-black);
+  line-height: 1;
+}
+.stat-note { font-size: var(--fs-2xs); color: var(--text-mute); line-height: var(--lh-snug); }
+
+/* Unspent-point cues: a dot on the Stats tab, a chip on the doll. */
+.inv-tab { position: relative; }
+.tab-dot {
+  position: absolute;
+  top: 4px;
+  right: calc(50% - 16px);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow);
+  animation: tab-dot-pulse 1.6s var(--ease-in-out) infinite;
+}
+.doll-points {
+  height: 26px;
+  cursor: pointer;
+  font-size: var(--fs-2xs);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+@keyframes tab-dot-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.35); opacity: 0.7; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tab-dot { animation: none; }
+  .set-body, .set-body-in, .set-chev { transition: none; }
+}
 
 /* ----------------------------------------------------------- consumables -- */
 
-.cons-body { display: flex; flex-direction: column; gap: var(--sp-2); }
-.cons-icon { font-size: 24px; }
+.cons-card {
+  --rc: var(--r-common);
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  min-height: 64px;
+  border-color: color-mix(in srgb, var(--rc) 40%, transparent);
+}
+.cons-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; line-height: var(--lh-snug); }
+.cons-body > b { font-size: var(--fs-sm); color: var(--rc); }
+.cons-body > span { font-size: var(--fs-2xs); color: var(--text-dim); }
+.cons-card .btn { min-height: 44px; }
+.cons-icon { font-size: 26px; text-align: center; }
 .cons-count { font-family: var(--font-num); color: var(--text-2); }
 .cons-where {
   font-size: 9px;

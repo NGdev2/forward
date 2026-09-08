@@ -5,10 +5,21 @@ import type {
   EquipmentSet,
   ItemInstance,
   PlayerStats,
-  StatKey
+  StatKey,
+  TalentKey
 } from './types';
-import { EQUIP_SLOTS } from './types';
+import { EQUIP_SLOTS, TALENT_KEYS } from './types';
 import { XP_CURVE, PROGRESS_MAX_FOR_CYCLE, STORAGE_KEY, STAT_WEIGHT } from './config';
+import { activeSetBonuses, type ActiveSetBonus, type SetProc } from './data/items';
+import { startingKit } from './loot';
+
+/** What one talent point buys. Tuned alongside the level-up gains in addXp. */
+export const TALENT_GAIN: Record<TalentKey, { statKey: StatKey; value: number }> = {
+  might: { statKey: 'atk', value: 2 },
+  guard: { statKey: 'def', value: 2 },
+  vigor: { statKey: 'hp', value: 12 },
+  precision: { statKey: 'critChance', value: 0.015 }
+};
 
 const SELL_RATE = 1.1;
 
@@ -59,6 +70,13 @@ function sanitizeItem(raw: unknown): ItemInstance | null {
   };
 }
 
+/** A fresh hero starts with the starting kit already worn (dagger, leather vest, buckler). */
+function startingEquipment(): EquipmentSet {
+  const eq = emptyEquipment();
+  for (const item of startingKit()) eq[item.slot] = item;
+  return eq;
+}
+
 function freshStats(): PlayerStats {
   return {
     level: 1,
@@ -80,11 +98,28 @@ function freshStats(): PlayerStats {
     bestDistance: 0,
     battlesWon: 0,
     bossesFelled: 0,
-    equipment: emptyEquipment(),
+    kills: 0,
+    killsById: {},
+    damageDealt: 0,
+    damageTaken: 0,
+    perfectParries: 0,
+    goldEarned: 0,
+    fightsLost: 0,
+    bossesLost: 0,
+    talents: { might: 0, guard: 0, vigor: 0, precision: 0 },
+    equipment: startingEquipment(),
     inventory: [],
     inventoryCap: 24,
     consumables: { potion_small: 2 },
-    settings: { sfx: true, music: true, reducedMotion: false, autoEquip: false },
+    settings: {
+      sfx: true,
+      music: true,
+      reducedMotion: false,
+      autoEquip: false,
+      sfxVolume: 0.8,
+      musicVolume: 0.6,
+      language: 'en'
+    },
     onboarded: false
   };
 }
@@ -118,6 +153,13 @@ export class GameState {
         : [];
       parsed.consumables ??= {};
       parsed.settings = { ...freshStats().settings, ...(parsed.settings ?? {}) };
+      // Fields added after the save was written.
+      const fresh = freshStats();
+      for (const key of ['kills', 'damageDealt', 'damageTaken', 'perfectParries', 'goldEarned', 'fightsLost', 'bossesLost'] as const) {
+        if (typeof parsed[key] !== 'number') parsed[key] = 0;
+      }
+      if (!parsed.killsById || typeof parsed.killsById !== 'object') parsed.killsById = {};
+      parsed.talents = { ...fresh.talents, ...(parsed.talents ?? {}) };
       return parsed;
     } catch {
       return null;
@@ -141,7 +183,10 @@ export class GameState {
     return this.stats.equipment;
   }
 
-  /** Sums a stat across every equipped item's primary and bonus affixes. */
+  /**
+   * Sums a stat across every equipped item's primary and bonus affixes, plus
+   * talent points and flat set bonuses.
+   */
   private gearStat(key: StatKey): number {
     let total = 0;
     for (const slot of EQUIP_SLOTS) {
@@ -152,18 +197,44 @@ export class GameState {
         if (affix?.statKey === key) total += affix.value;
       }
     }
+    for (const t of TALENT_KEYS) {
+      const gain = TALENT_GAIN[t];
+      if (gain.statKey === key) total += gain.value * (this.stats.talents?.[t] ?? 0);
+    }
+    for (const b of this.setBonuses) {
+      total += b.bonus.stats?.[key] ?? 0;
+    }
     return total;
+  }
+
+  /** Percentage multipliers granted by set bonuses, keyed by stat. */
+  private setPct(key: StatKey): number {
+    let pct = 0;
+    for (const b of this.setBonuses) pct += b.bonus.statsPct?.[key] ?? 0;
+    return pct;
+  }
+
+  /** Set bonuses currently active, resolved from worn gear. */
+  get setBonuses(): ActiveSetBonus[] {
+    return activeSetBonuses(this.stats.equipment);
+  }
+
+  /** Special behaviours granted by active set bonuses (the combat engine reads these). */
+  get setProcs(): Set<SetProc> {
+    const out = new Set<SetProc>();
+    for (const b of this.setBonuses) if (b.bonus.proc) out.add(b.bonus.proc);
+    return out;
   }
 
   get derived(): DerivedStats {
     const s = this.stats;
-    const atk = Math.round(s.baseAtk + this.gearStat('atk'));
-    const def = Math.round(s.baseDef + this.gearStat('def'));
-    const maxHp = Math.round(s.maxHp + this.gearStat('hp'));
-    const critChance = Math.min(0.75, 0.05 + this.gearStat('critChance'));
-    const critDamage = 1.5 + this.gearStat('critDamage');
-    const goldFind = 1 + this.gearStat('goldFind');
-    const lifesteal = this.gearStat('lifesteal');
+    const atk = Math.round((s.baseAtk + this.gearStat('atk')) * (1 + this.setPct('atk')));
+    const def = Math.round((s.baseDef + this.gearStat('def')) * (1 + this.setPct('def')));
+    const maxHp = Math.round((s.maxHp + this.gearStat('hp')) * (1 + this.setPct('hp')));
+    const critChance = Math.min(0.75, 0.05 + this.gearStat('critChance') + this.setPct('critChance'));
+    const critDamage = 1.5 + this.gearStat('critDamage') + this.setPct('critDamage');
+    const goldFind = 1 + this.gearStat('goldFind') + this.setPct('goldFind');
+    const lifesteal = this.gearStat('lifesteal') + this.setPct('lifesteal');
     const speed = 10 + this.gearStat('speed');
     const power = Math.round(
       atk * STAT_WEIGHT.atk +
@@ -188,6 +259,7 @@ export class GameState {
   addGold(amount: number): number {
     const gained = Math.max(0, Math.round(amount * this.derived.goldFind));
     this.stats.gold += gained;
+    this.stats.goldEarned = (this.stats.goldEarned ?? 0) + gained;
     return gained;
   }
 
@@ -215,10 +287,10 @@ export class GameState {
     while (this.stats.xp >= this.stats.xpToNext) {
       this.stats.xp -= this.stats.xpToNext;
       this.stats.level += 1;
-      this.stats.maxHp += 8;
-      this.stats.baseAtk += 2;
+      this.stats.maxHp += 6;
+      this.stats.baseAtk += 1;
       this.stats.baseDef += 1;
-      this.stats.statPoints += 1;
+      this.stats.statPoints += 2;
       this.stats.xpToNext = XP_CURVE(this.stats.level);
       this.stats.hp = this.maxHp;
       levels += 1;
@@ -260,6 +332,41 @@ export class GameState {
     if (s.worldCycle > s.bestCycle) s.bestCycle = s.worldCycle;
   }
 
+  /**
+   * Losing to the boss sends you back to the start of this stretch of road:
+   * the bar empties so you get a full set of encounters to gear up before the
+   * same boss blocks the road again.
+   */
+  onBossLost() {
+    const s = this.stats;
+    s.bossesLost = (s.bossesLost ?? 0) + 1;
+    s.progress = 0;
+  }
+
+  /* -------------------------------------------------------------- talents -- */
+
+  /** Spends one unspent level-up point on a permanent stat. */
+  spendTalent(key: TalentKey): boolean {
+    if (this.stats.statPoints <= 0) return false;
+    this.stats.statPoints -= 1;
+    this.stats.talents[key] = (this.stats.talents[key] ?? 0) + 1;
+    if (key === 'vigor') this.stats.hp += TALENT_GAIN.vigor.value;
+    this.clampHp();
+    return true;
+  }
+
+  /* -------------------------------------------------------------- records -- */
+
+  recordKill(enemyId: string, isBoss: boolean) {
+    const s = this.stats;
+    s.kills = (s.kills ?? 0) + 1;
+    s.killsById ??= {};
+    s.killsById[enemyId] = (s.killsById[enemyId] ?? 0) + 1;
+    if (isBoss) {
+      /* bossesFelled is bumped by onBossDefeated when the reward lands */
+    }
+  }
+
   addDistance(meters: number) {
     this.stats.distance += meters;
     if (this.stats.distance > this.stats.bestDistance) {
@@ -275,6 +382,15 @@ export class GameState {
 
   get bagFull(): boolean {
     return this.stats.inventory.length >= this.stats.inventoryCap;
+  }
+
+  /** Hard ceiling on bag size — the grid stays readable on a phone. */
+  static readonly BAG_CAP_MAX = 60;
+
+  /** Grows the bag by `n` slots (bought from the trader). Returns the new cap. */
+  expandBag(n: number): number {
+    this.stats.inventoryCap = Math.min(GameState.BAG_CAP_MAX, this.stats.inventoryCap + Math.max(0, Math.round(n)));
+    return this.stats.inventoryCap;
   }
 
   addItem(item: ItemInstance): boolean {

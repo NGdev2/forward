@@ -1,8 +1,11 @@
 import type { GameContext, RewardParams, Screen, ScreenParams } from '../core/context';
 import type { ItemInstance } from '../game/types';
 import { rollLoot } from '../game/loot';
-import { itemDetail, itemTile, rarityVar } from './inventory/ui';
+import { elementBadge, itemDetail, itemTile, rarityVar } from './inventory/ui';
 import { rarityById } from '../game/config';
+import { setById, setPieces, wornSetCounts } from '../game/data/items';
+import { biomeFor } from './run/biomes';
+import { itemDisplayName, name as cname, t } from '../i18n';
 
 /* ============================================================================
  * The payoff screen.
@@ -60,7 +63,7 @@ export class RewardScreen implements Screen {
       this.timers.push(
         window.setTimeout(() => {
           ctx.audio.play('levelup');
-          ctx.toast(`Level ${ctx.state.stats.level}!`, 'good');
+          ctx.toast(t('common.level_toast', { n: ctx.state.stats.level }), 'good');
           ctx.fx.burst(window.innerWidth / 2, window.innerHeight * 0.35, 'levelup');
         }, 700)
       );
@@ -98,7 +101,7 @@ export class RewardScreen implements Screen {
       if (state.addItem(item)) kept.push(item);
       else {
         state.stats.gold += state.sellValue(item);
-        this.ctx.toast(`Bag full — ${item.name} sold`, 'info');
+        this.ctx.toast(t('reward.bag_full_sold', { name: itemDisplayName(item) }), 'info');
       }
     }
 
@@ -127,11 +130,11 @@ export class RewardScreen implements Screen {
   private template(): string {
     const p = this.params;
     const a = this.applied;
-    const rows: string[] = [];
-    if (a.gold) rows.push(row('🪙', 'Gold', `+${a.gold}`, 'gold'));
-    if (a.xp) rows.push(row('✦', 'Experience', `+${a.xp}`, 'xp'));
-    if (a.healed) rows.push(row('❤️', 'Recovered', `+${a.healed}`, 'good'));
-    if (a.levels) rows.push(row('⬆️', a.levels > 1 ? `${a.levels} levels` : 'Level up', `→ ${this.ctx.state.stats.level}`, 'accent'));
+    const rows = this.ledgerRows(a);
+
+    // After a boss the world cycle has already advanced (apply() ran first),
+    // so biomeFor() now names the country the road is about to enter.
+    const next = p.bossDefeated ? biomeFor(this.ctx.state.stats.worldCycle) : null;
 
     return `
       <div class="rw-glow" aria-hidden="true"></div>
@@ -140,6 +143,7 @@ export class RewardScreen implements Screen {
           <span class="rw-icon">${p.icon}</span>
           <h1 class="rw-title">${esc(p.title)}</h1>
           ${p.message ? `<p class="rw-msg">${esc(p.message)}</p>` : ''}
+          ${next ? `<p class="rw-next"><i>🧭</i>${esc(t('reward.road_turns'))} <b>${esc(cname('biome', next.id, next.name))}</b></p>` : ''}
         </div>
 
         ${rows.length ? `<div class="rw-rows panel panel-flat">${rows.join('')}</div>` : ''}
@@ -148,13 +152,23 @@ export class RewardScreen implements Screen {
       </div>
 
       <div class="rw-foot">
-        ${p.allowDouble ? `<button class="btn btn-gold btn-block rw-double"><i>📺</i><span>Double it<u>Watch a short ad</u></span></button>` : ''}
+        ${p.allowDouble ? `<button class="btn btn-gold btn-block rw-double"><i>📺</i><span>${esc(t('reward.double'))}<u>${esc(t('reward.watch_ad'))}</u></span></button>` : ''}
         <div class="rw-foot-row">
-          <button class="btn btn-ghost rw-bag">🎒 Bag</button>
-          <button class="btn btn-primary btn-cta rw-go">Keep going →</button>
+          <button class="btn btn-ghost rw-bag">🎒 ${esc(t('common.bag'))}</button>
+          <button class="btn btn-primary btn-cta rw-go">${esc(t('reward.keep_going'))}</button>
         </div>
       </div>
     `;
+  }
+
+  /** The gold / xp / heal / level rows, in display order. */
+  private ledgerRows(a: Applied): string[] {
+    const rows: string[] = [];
+    if (a.gold) rows.push(row('🪙', t('common.gold'), `+${a.gold}`, 'gold'));
+    if (a.xp) rows.push(row('✦', t('reward.xp'), `+${a.xp}`, 'xp'));
+    if (a.healed) rows.push(row('❤️', t('reward.recovered'), `+${a.healed}`, 'good'));
+    if (a.levels) rows.push(row('⬆️', a.levels > 1 ? t('reward.levels', { n: a.levels }) : t('common.level_up'), `→ ${this.ctx.state.stats.level}`, 'accent'));
+    return rows;
   }
 
   private renderLoot() {
@@ -164,7 +178,7 @@ export class RewardScreen implements Screen {
 
     const head = document.createElement('div');
     head.className = 'rw-loot-head';
-    head.textContent = this.applied.loot.length > 1 ? 'Spoils' : 'You found';
+    head.textContent = this.applied.loot.length > 1 ? t('reward.spoils') : t('reward.found');
     host.appendChild(head);
 
     for (const item of this.applied.loot) {
@@ -174,16 +188,34 @@ export class RewardScreen implements Screen {
 
       const tile = itemTile(item, { upgrade: this.ctx.state.isUpgrade(item) });
       tile.classList.add('rw-drop-tile');
-      const detail = itemDetail(item, this.ctx.state.equipment[item.slot]);
+      let detail = itemDetail(item, this.ctx.state.equipment[item.slot], this.ctx.state.equipment);
       card.appendChild(tile);
       card.appendChild(detail);
+
+      // Set pieces get a banner above the sheet: the set, its element and how
+      // close the player is to the next bonus. Kept live by the equip button.
+      const set = setById(item.setId);
+      const banner = set ? document.createElement('div') : null;
+      const refreshBanner = () => {
+        if (!set || !banner) return;
+        const worn = wornSetCounts(this.ctx.state.equipment).get(set.id) ?? 0;
+        banner.className = 'rw-set';
+        banner.style.setProperty('--el', `var(--el-${set.element})`);
+        banner.style.setProperty('--el-soft', `var(--el-${set.element}-soft)`);
+        banner.innerHTML = `<b>${set.icon} ${esc(t('reward.set_piece', { set: cname('set', set.id, set.name) }))}</b><em>${esc(t('reward.worn', { n: worn, total: setPieces(set.id).length }))}</em>`;
+        banner.insertBefore(elementBadge(set.element), banner.querySelector('em'));
+      };
+      if (banner) {
+        refreshBanner();
+        card.appendChild(banner);
+      }
 
       // Equipping straight from the drop is the whole point of a loot screen.
       const equip = document.createElement('button');
       equip.className = 'btn btn-sm rw-equip';
       const refresh = () => {
         const worn = this.ctx.state.equipment[item.slot]?.uid === item.uid;
-        equip.textContent = worn ? '✓ Equipped' : this.ctx.state.isUpgrade(item) ? '▲ Equip (upgrade)' : 'Equip';
+        equip.textContent = worn ? t('reward.equipped') : this.ctx.state.isUpgrade(item) ? t('reward.equip_upgrade') : t('common.equip');
         equip.disabled = worn;
         equip.classList.toggle('btn-primary', !worn && this.ctx.state.isUpgrade(item));
         equip.classList.toggle('btn-ghost', worn || !this.ctx.state.isUpgrade(item));
@@ -191,13 +223,19 @@ export class RewardScreen implements Screen {
       equip.addEventListener('click', () => {
         const res = this.ctx.state.equip(item);
         if (res.blocked) {
-          this.ctx.toast('Bag is full — nowhere to put the old one', 'bad');
+          this.ctx.toast(t('reward.bag_full_old'), 'bad');
           return;
         }
         this.ctx.audio.play('loot');
-        this.ctx.toast(`Equipped ${item.name}`, 'good');
+        this.ctx.toast(t('reward.equipped_toast', { name: itemDisplayName(item) }), 'good');
         this.ctx.save();
         refresh();
+        refreshBanner();
+        // The sheet's own set block ("N/4 worn", unlocked bonuses) and its
+        // comparison are now stale; rebuild it in place.
+        const fresh = itemDetail(item, this.ctx.state.equipment[item.slot], this.ctx.state.equipment);
+        detail.replaceWith(fresh);
+        detail = fresh;
       });
       refresh();
       card.appendChild(equip);
@@ -219,7 +257,9 @@ export class RewardScreen implements Screen {
 
   private wire() {
     this.bind('.rw-go', () => this.ctx.goto('run'));
-    this.bind('.rw-bag', () => this.ctx.goto('inventory'));
+    // "Back" from the bag must land on the road, never here: remounting the
+    // reward screen would apply the reward again.
+    this.bind('.rw-bag', () => this.ctx.goto('inventory', { from: 'run' }));
     this.bind('.rw-double', () => this.double());
   }
 
@@ -254,19 +294,13 @@ export class RewardScreen implements Screen {
     this.ctx.save();
 
     this.ctx.audio.play('coin');
-    this.ctx.toast('Doubled! (ad placeholder)', 'legendary');
+    this.ctx.toast(t('reward.doubled'), 'legendary');
     this.ctx.fx.burst(window.innerWidth / 2, window.innerHeight * 0.42, 'coin', { count: 30 });
 
     // Re-render the ledger rows in place.
     const rows = this.el.querySelector('.rw-rows');
     if (rows) {
-      const a = this.applied;
-      const out: string[] = [];
-      if (a.gold) out.push(row('🪙', 'Gold', `+${a.gold}`, 'gold'));
-      if (a.xp) out.push(row('✦', 'Experience', `+${a.xp}`, 'xp'));
-      if (a.healed) out.push(row('❤️', 'Recovered', `+${a.healed}`, 'good'));
-      if (a.levels) out.push(row('⬆️', a.levels > 1 ? `${a.levels} levels` : 'Level up', `→ ${this.ctx.state.stats.level}`, 'accent'));
-      rows.innerHTML = out.join('');
+      rows.innerHTML = this.ledgerRows(this.applied).join('');
       rows.classList.add('is-bumped');
     }
   }
@@ -289,7 +323,7 @@ export class RewardScreen implements Screen {
 /* ------------------------------------------------------------------ utils -- */
 
 function row(icon: string, label: string, value: string, tone: string): string {
-  return `<div class="rw-row rw-row-${tone}"><i>${icon}</i><span>${label}</span><b>${value}</b></div>`;
+  return `<div class="rw-row rw-row-${tone}"><i>${icon}</i><span>${esc(label)}</span><b>${value}</b></div>`;
 }
 
 function esc(s: string): string {
