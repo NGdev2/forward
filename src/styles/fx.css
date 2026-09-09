@@ -61,6 +61,21 @@
   z-index: 80;
 }
 
+/* On the road the top edge belongs to the HUD (hero chip, purse, boss bar);
+   toasts drop underneath it so they never hide HP or gold. */
+#game-root:has(> .screen-layer[data-screen='run']) .toast-host {
+  top: calc(var(--safe-top) + 118px);
+}
+/* In combat the enemy card owns the top; toasts sit on the sky below it. */
+#game-root:has(> .screen-layer[data-screen='combat']) .toast-host {
+  top: calc(var(--safe-top) + 160px);
+}
+/* Trader and bag: keep the purse readable while a "bought"/"sold" toast shows. */
+#game-root:has(> .screen-layer[data-screen='shop']) .toast-host,
+#game-root:has(> .screen-layer[data-screen='inventory']) .toast-host {
+  top: calc(var(--safe-top) + 64px);
+}
+
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(-12px) scale(0.95); }
   to { opacity: 1; transform: translateY(0) scale(1); }

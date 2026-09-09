@@ -361,6 +361,23 @@ export function elementOf(eq: EquipmentSet, slot: EquipSlot): SetElement | null 
   return setById(eq[slot]?.setId)?.element ?? null;
 }
 
+/**
+ * The element of the set with the most worn pieces (ties: earliest slot),
+ * or null when no set piece is worn. Sets have no weapon piece, so this is
+ * what colours a Strike when the weapon itself carries no element.
+ */
+export function dominantElement(eq: EquipmentSet): SetElement | null {
+  let best: string | null = null;
+  let bestN = 0;
+  for (const [setId, n] of wornSetCounts(eq)) {
+    if (n > bestN) {
+      best = setId;
+      bestN = n;
+    }
+  }
+  return setById(best ?? undefined)?.element ?? null;
+}
+
 /* --------------------------------------------------------------- indexes -- */
 
 const BY_ID = new Map<string, BaseItem>(BASE_ITEMS.map(b => [b.id, b]));

@@ -3,7 +3,7 @@ import type { CombatAbility } from '../game/data/abilities';
 import { STATUS_INFO } from '../game/data/abilities';
 import { Combat, type CombatEvent, type ParryResult, type PlayerAction, type TurnResult } from '../game/combat';
 import { combatConsumables } from '../game/data/consumables';
-import { elementOf } from '../game/data/items';
+import { dominantElement, elementOf } from '../game/data/items';
 import type { EnemyInstance, StatusEffect } from '../game/types';
 import type { FxElement } from '../render/api';
 import { weaponFamily } from '../render/hero';
@@ -145,8 +145,10 @@ export class CombatScreen implements Screen {
     const fam = weaponFamily(ctx.state.equipment.weapon?.baseId ?? null);
     this.melee = !(fam && RANGED_FAMILIES.has(fam));
     this.rangedPose = fam === 'bow' || fam === 'chakram' ? 'attack' : 'cast';
-    this.attackElement = (elementOf(ctx.state.equipment, 'weapon') as FxElement | null) ?? 'steel';
-    this.parryElement = (elementOf(ctx.state.equipment, 'offhand') as FxElement | null) ?? 'steel';
+    // The slot's own set wins; otherwise the set you wear most of colours the move.
+    const eq = ctx.state.equipment;
+    this.attackElement = ((elementOf(eq, 'weapon') ?? dominantElement(eq)) as FxElement | null) ?? 'steel';
+    this.parryElement = ((elementOf(eq, 'offhand') ?? dominantElement(eq)) as FxElement | null) ?? 'steel';
 
     const el = document.createElement('div');
     el.className = 'screen screen-combat';
