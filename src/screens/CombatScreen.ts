@@ -237,17 +237,15 @@ export class CombatScreen implements Screen {
             <i class="cb-intent-sub"></i>
           </span>
         </div>
+        <button class="cb-strip" type="button" aria-label="${esc(t('combat.fight_log'))}">
+          <span class="cb-strip-text"></span>
+          <i class="cb-strip-glyph">📜</i>
+        </button>
       </div>
 
       <div class="cb-turn-banner"><i></i><b></b><u></u></div>
 
-      <div class="cb-strip">
-        <span class="cb-strip-text"></span>
-        <button class="cb-strip-btn" type="button" aria-label="${esc(t('combat.fight_log'))}">📜</button>
-      </div>
-
       <div class="cb-bottom">
-        <button class="cb-parry-pad" type="button"><b>⛨ ${esc(t('combat.parry'))}</b><u>${esc(t('combat.parry_hint'))}</u></button>
         <div class="cb-hero-card">
           <div class="cb-hero-line">
             <span class="cb-hero-name">${esc(t('common.you'))}</span>
@@ -345,7 +343,7 @@ export class CombatScreen implements Screen {
 
   /** Buttons that work whether or not the beat player is busy. */
   private bindChrome() {
-    const strip = this.q('.cb-strip-btn');
+    const strip = this.q('.cb-strip');
     const onLog = () => {
       this.ctx.audio.play('ui_tap');
       this.openLog();
@@ -361,10 +359,12 @@ export class CombatScreen implements Screen {
     name.addEventListener('click', onName);
     this.cleanups.push(() => name.removeEventListener('click', onName));
 
-    // The parry tap: anywhere on the screen while the ring is closing.
+    // The parry tap: on the battlefield (the ring closes on the hero) while
+    // the enemy lunges. The action bar and sheets are not a parry.
     const onTap = (e: PointerEvent) => {
       if (!this.qte || this.qte.tapped) return;
-      if ((e.target as HTMLElement).closest('.sheet-scrim')) return;
+      const el = e.target as HTMLElement;
+      if (el.closest('.sheet-scrim, .sheet, .cb-bottom, .cb-strip, .cb-enemy-name')) return;
       e.preventDefault();
       this.onParryTap();
     };
@@ -695,9 +695,10 @@ export class CombatScreen implements Screen {
       if (this.finished) return;
       this.arena.pose('player', 'defend');
       const ms = this.arena.attack('enemy', 'melee', { approach: QTE_APPROACH });
-      this.arena.qteStart(ms / 1000, PARRY_WINDOW);
+      // The ring carries a "tap" cue until the player has landed a few parries.
+      const learning = (this.ctx.state.stats.perfectParries ?? 0) < 5;
+      this.arena.qteStart(ms / 1000, PARRY_WINDOW, learning ? t('combat.parry_hint') : '');
       this.qte = { t: 0, hitAt: ms / 1000, tapped: false, result: 'none', resolved: false, froze: false };
-      this.q('.cb-parry-pad').classList.add('is-on');
       this.ctx.audio.play('swoosh');
     });
   }
@@ -716,10 +717,8 @@ export class CombatScreen implements Screen {
     const d = q.t - q.hitAt;
     if (Math.abs(d) <= PARRY_WINDOW) {
       q.result = 'perfect';
-      this.q('.cb-parry-pad').classList.add('is-hit');
     } else {
       q.result = 'none';
-      this.q('.cb-parry-pad').classList.add('is-miss');
       this.floatOn('player', d < 0 ? t('combat.too_early') : t('combat.too_late'), 'hint');
       this.ctx.audio.play('ui_back');
     }
@@ -753,8 +752,6 @@ export class CombatScreen implements Screen {
     q.resolved = true;
     const parry: ParryResult = q.result;
     this.arena.qteResolve(parry);
-    const pad = this.q('.cb-parry-pad');
-    pad.classList.remove('is-on', 'is-hit', 'is-miss');
     this.hideBanner();
     const r = this.combat.enemyTurn(parry);
     this.after(0.35, () => {

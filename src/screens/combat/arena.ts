@@ -398,9 +398,12 @@ export class CombatArena {
   /* ------------------------------------------------------------------ qte -- */
 
   /** Starts the parry timing ring: closes on the hero over `durSec`. */
-  qteStart(durSec: number, windowSec: number) {
+  qteStart(durSec: number, windowSec: number, cue = '') {
     this.qte = { t: 0, dur: durSec, window: windowSec, result: 'pending', since: 0 };
+    this.qteCue = cue;
   }
+  /** Short instruction drawn under the ring for players still learning the parry. */
+  private qteCue = '';
 
   qteResolve(result: 'perfect' | 'none') {
     if (!this.qte) return;
@@ -823,6 +826,24 @@ export class CombatArena {
       c.beginPath();
       c.arc(0, 0, r, 0, Math.PI * 2);
       c.stroke();
+
+      if (this.qteCue) {
+        c.globalCompositeOperation = 'source-over';
+        c.globalAlpha = 0.9;
+        c.font = `700 ${Math.round(11 * Math.max(0.8, this.h / 844))}px 'Segoe UI', Roboto, sans-serif`;
+        c.textAlign = 'center';
+        c.textBaseline = 'top';
+        c.fillStyle = 'rgba(6,8,16,0.75)';
+        const label = this.qteCue.toUpperCase();
+        const tw = c.measureText(label).width + 14;
+        // Above the ring: the hero stands low, so below it would collide with the HUD.
+        const ty = -r1 - 30;
+        c.beginPath();
+        c.roundRect(-tw / 2, ty - 3, tw, 18, 9);
+        c.fill();
+        c.fillStyle = inWindow ? '#ffffff' : '#cdf4ff';
+        c.fillText(label, 0, ty);
+      }
     } else {
       // Post flash: perfect blooms outward in white/cyan, a miss dies red.
       const s = Math.min(1, q.since / 0.4);

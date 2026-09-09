@@ -3,7 +3,8 @@
  * Canvas battlefield behind, three fixed bands of UI in front:
  *   .cb-top     enemy card + telegraphed intent
  *   .cb-turn-banner  "GOBLIN — RAKE" for whoever is acting
- *   .cb-strip   last log line + the 📜 fight-log button
+ *   .cb-strip   last log line (tap it for the full fight log); sits under the
+ *               enemy card, out of the battlefield
  *   .cb-bottom  your vitals + the action bar
  * ========================================================================== */
 
@@ -284,103 +285,49 @@
 /* ------------------------------------------------------------- log strip -- */
 
 .cb-strip {
-  position: relative;
-  z-index: var(--z-content);
-  margin: auto var(--sp-3) 0;
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  min-height: 34px;
+  width: 100%;
+  min-height: 26px;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: rgba(6, 8, 16, 0.55);
+  border: 1px solid transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: var(--fs-xs);
+  text-align: left;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: border-color 200ms;
 }
+.cb-strip:active { transform: scale(0.99); }
 .cb-strip-text {
   flex: 1;
   min-width: 0;
-  padding: 6px 12px;
-  border-radius: var(--radius-pill);
-  background: rgba(6, 8, 16, 0.74);
-  border: 1px solid var(--border);
-  font-size: var(--fs-sm);
-  color: var(--text-2);
-  backdrop-filter: blur(4px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+  line-height: 1.3;
 }
-.cb-strip-text:empty { opacity: 0; }
+.cb-strip-text:empty::before { content: '…'; opacity: 0.4; }
+.cb-strip-glyph { font-style: normal; font-size: 13px; opacity: 0.7; flex: none; }
 .cb-strip.is-new .cb-strip-text { animation: cb-log-in 260ms var(--ease-back); }
-.cb-strip-text.is-you { border-color: rgba(69, 214, 194, 0.35); }
-.cb-strip-text.is-foe, .cb-strip-text.is-bad { border-color: rgba(255, 77, 109, 0.4); }
-.cb-strip-text.is-parry { border-color: rgba(127, 216, 255, 0.6); color: #cdf4ff; }
-.cb-strip-text.is-crit { border-color: rgba(255, 224, 102, 0.6); color: var(--gold-hi); }
-.cb-strip-text.is-good { border-color: rgba(86, 224, 140, 0.45); }
-.cb-strip-btn {
-  flex: none;
-  width: 34px;
-  height: 34px;
-  border-radius: var(--radius-pill);
-  background: rgba(6, 8, 16, 0.74);
-  border: 1px solid var(--border-hi);
-  font-size: 16px;
-  line-height: 1;
-  color: var(--text);
-  cursor: pointer;
-  backdrop-filter: blur(4px);
-}
-.cb-strip-btn:active { transform: scale(0.94); }
-
-/* ------------------------------------------------------------- parry pad -- */
-
-.cb-parry-pad {
-  display: none;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  min-height: 52px;
-  border-radius: var(--radius);
-  border: 2px solid rgba(127, 216, 255, 0.7);
-  background: linear-gradient(180deg, rgba(40, 90, 140, 0.55), rgba(20, 40, 80, 0.7));
-  color: #eaf9ff;
-  cursor: pointer;
-  box-shadow: 0 0 22px rgba(127, 216, 255, 0.35), inset 0 1px 0 var(--edge-light);
-  animation: cb-pad-pulse 0.5s ease-in-out infinite;
-  touch-action: manipulation;
-  user-select: none;
-  -webkit-user-select: none;
-}
-.cb-parry-pad.is-on { display: flex; }
-.cb-parry-pad b {
-  font-family: var(--font-display);
-  font-size: var(--fs-xl);
-  font-weight: var(--fw-black);
-  letter-spacing: 0.1em;
-}
-.cb-parry-pad u {
-  text-decoration: none;
-  font-size: var(--fs-2xs);
-  letter-spacing: var(--tr-label);
-  text-transform: uppercase;
-  opacity: 0.8;
-}
-.cb-parry-pad.is-hit {
-  border-color: #fff;
-  background: linear-gradient(180deg, rgba(127, 216, 255, 0.85), rgba(60, 140, 220, 0.85));
-  animation: none;
-}
-.cb-parry-pad.is-miss {
-  border-color: var(--danger);
-  background: linear-gradient(180deg, rgba(120, 30, 50, 0.7), rgba(60, 10, 20, 0.8));
-  color: var(--danger-hi);
-  animation: none;
-}
-.cb-parry-pad.is-miss u::after { content: ' — missed'; }
+.cb-strip:has(.is-you) { border-color: rgba(69, 214, 194, 0.3); }
+.cb-strip:has(.is-foe), .cb-strip:has(.is-bad) { border-color: rgba(255, 77, 109, 0.35); }
+.cb-strip:has(.is-parry) { border-color: rgba(127, 216, 255, 0.55); }
+.cb-strip-text.is-parry { color: #cdf4ff; }
+.cb-strip-text.is-crit { color: var(--gold-hi); }
+.cb-strip-text.is-good { color: var(--good-hi); }
 
 /* ---------------------------------------------------------------- bottom -- */
 
 .cb-bottom {
   position: relative;
   z-index: var(--z-content);
+  margin-top: auto;
   padding: var(--sp-3) var(--sp-3) calc(var(--safe-bottom) + var(--sp-3));
   display: flex;
   flex-direction: column;
@@ -856,7 +803,6 @@
 @media (prefers-reduced-motion: reduce) {
   .cb-strip.is-new .cb-strip-text,
   .cb-turn-banner.is-on b,
-  .cb-parry-pad,
   .cb-vital.is-low .bar-fill,
   .cb-intro-name,
   .threat-4,

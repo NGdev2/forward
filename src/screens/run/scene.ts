@@ -503,12 +503,12 @@ export class RunScene {
     }
 
     // Markers.
+    // The lanes you did not pick stay exactly where they are — you rush past
+    // them, you don't make them vanish. They only dim a little so the chosen
+    // lane reads as the one that matters.
     for (const m of this.markers) {
-      m.alpha = Math.min(1, m.alpha + dt * 2.4);
-      if (m.discarded) {
-        m.drift += dt * 2.6;
-        m.alpha = Math.max(0, m.alpha - dt * 1.6);
-      }
+      const target = m.discarded ? 0.72 : 1;
+      m.alpha = m.alpha < target ? Math.min(target, m.alpha + dt * 2.4) : Math.max(target, m.alpha - dt * 1.6);
     }
 
     if (this.phase === 'choose') {
@@ -1213,8 +1213,7 @@ export class RunScene {
     const c = this.c;
     const node = m.node;
     const s = this.scaleAt(z);
-    const drift = m.discarded ? m.drift * m.drift * 260 * (node.lane === 1 ? 1 : node.lane - 1) : 0;
-    const x = this.laneX(node.lane, z) + drift;
+    const x = this.laneX(node.lane, z);
     const y = this.yAt(z);
     const u = s * this.uiScale;
     const col = this.dangerColor(node.danger);
