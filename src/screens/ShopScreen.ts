@@ -1,7 +1,7 @@
 import type { GameContext, Screen, ScreenParams, ShopParams } from '../core/context';
 import type { ItemInstance, Rarity } from '../game/types';
 import { addLuckCharges, activeLuckBonus, makeItem, rollShopStock } from '../game/loot';
-import { CONSUMABLES, consumableById, type ConsumableDef } from '../game/data/consumables';
+import { CONSUMABLES, consumableById, type ConsumableDef, supplyPrice } from '../game/data/consumables';
 import { ITEM_SETS, setPieces, wornSetCounts, type ItemSet } from '../game/data/items';
 import { GameState } from '../game/state';
 import { clear, el, elementBadge, esc, itemDetail, itemTile, openSheet, rarityVar, sortItems } from './inventory/ui';
@@ -354,7 +354,8 @@ export class ShopScreen implements Screen {
 
   private supplyRow(c: ConsumableDef): HTMLElement {
     const state = this.ctx.state;
-    const gems = gemPrice(c.price);
+    const price = supplyPrice(c, state.stats.level);
+    const gems = gemPrice(price);
     const rowEl = el('div', `shop-row rarity-${c.tone}`);
     rowEl.style.setProperty('--rc', `var(--r-${c.tone})`);
     rowEl.innerHTML = `
@@ -367,17 +368,17 @@ export class ShopScreen implements Screen {
     const pay = el('div', 'shop-pay');
     const goldBtn = el('button', 'btn btn-sm btn-gold shop-buy');
     const gemBtn = el('button', 'btn btn-sm btn-primary shop-buy');
-    goldBtn.setAttribute('aria-label', t('shop.buy_aria_gold', { name: cname('consumable', c.id, c.name), n: c.price }));
+    goldBtn.setAttribute('aria-label', t('shop.buy_aria_gold', { name: cname('consumable', c.id, c.name), n: price }));
     gemBtn.setAttribute('aria-label', t('shop.buy_aria_gems', { name: cname('consumable', c.id, c.name), n: gems }));
     const refresh = () => {
-      goldBtn.textContent = `${c.price} 🪙`;
+      goldBtn.textContent = `${price} 🪙`;
       gemBtn.textContent = `${gems} 💎`;
-      goldBtn.disabled = state.stats.gold < c.price;
+      goldBtn.disabled = state.stats.gold < price;
       gemBtn.disabled = state.stats.gems < gems;
       (rowEl.querySelector('em') as HTMLElement).textContent = t('shop.carrying', { n: state.consumableCount(c.id) });
     };
     const buy = (currency: Currency) => {
-      if (!this.pay(currency, c.price, gems)) return;
+      if (!this.pay(currency, price, gems)) return;
       state.addConsumable(c.id, 1);
       this.ctx.audio.play('coin');
       this.ctx.save();

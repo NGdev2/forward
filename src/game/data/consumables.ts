@@ -39,7 +39,7 @@ export const CONSUMABLES: ConsumableDef[] = [
     name: 'Minor Potion',
     icon: '🧪',
     description: 'Restores 35% of max HP.',
-    price: 40,
+    price: 50,
     where: 'both',
     effect: { kind: 'healPct', value: 0.35 },
     minLevel: 1,
@@ -50,7 +50,7 @@ export const CONSUMABLES: ConsumableDef[] = [
     name: 'Greater Potion',
     icon: '⚗️',
     description: 'Restores 80% of max HP.',
-    price: 140,
+    price: 220,
     where: 'both',
     effect: { kind: 'healPct', value: 0.8 },
     minLevel: 5,
@@ -61,7 +61,7 @@ export const CONSUMABLES: ConsumableDef[] = [
     name: 'Elixir of Life',
     icon: '💖',
     description: 'Fully restores HP.',
-    price: 420,
+    price: 520,
     where: 'both',
     effect: { kind: 'healPct', value: 1 },
     minLevel: 12,
@@ -72,7 +72,7 @@ export const CONSUMABLES: ConsumableDef[] = [
     name: 'Draught of Might',
     icon: '💪',
     description: '+40% Attack for 5 turns of the next fight.',
-    price: 180,
+    price: 220,
     where: 'combat',
     effect: { kind: 'buffAtk', value: 0.4, turns: 5 },
     minLevel: 6,
@@ -83,7 +83,7 @@ export const CONSUMABLES: ConsumableDef[] = [
     name: 'Stoneskin Draught',
     icon: '🪨',
     description: '+60% Defense for 5 turns of the next fight.',
-    price: 180,
+    price: 220,
     where: 'combat',
     effect: { kind: 'buffDef', value: 0.6, turns: 5 },
     minLevel: 6,
@@ -94,7 +94,7 @@ export const CONSUMABLES: ConsumableDef[] = [
     name: 'Firebomb',
     icon: '💣',
     description: 'Hurls 250% weapon damage at the enemy.',
-    price: 150,
+    price: 190,
     where: 'combat',
     effect: { kind: 'damage', value: 2.5 },
     minLevel: 8,
@@ -105,7 +105,7 @@ export const CONSUMABLES: ConsumableDef[] = [
     name: 'Antidote',
     icon: '🌿',
     description: 'Clears poison, burn and bleed.',
-    price: 90,
+    price: 110,
     where: 'combat',
     effect: { kind: 'cleanse' },
     minLevel: 4,
@@ -116,7 +116,7 @@ export const CONSUMABLES: ConsumableDef[] = [
     name: 'Ether',
     icon: '🔷',
     description: 'Restores 6 energy in battle.',
-    price: 120,
+    price: 150,
     where: 'combat',
     effect: { kind: 'energy', value: 6 },
     minLevel: 4,
@@ -127,7 +127,7 @@ export const CONSUMABLES: ConsumableDef[] = [
     name: 'Tome of Wisdom',
     icon: '📘',
     description: 'Grants a chunk of XP instantly.',
-    price: 260,
+    price: 320,
     where: 'field',
     effect: { kind: 'xp', value: 120 },
     minLevel: 3,
@@ -138,7 +138,7 @@ export const CONSUMABLES: ConsumableDef[] = [
     name: 'Four-Leaf Clover',
     icon: '🍀',
     description: 'Raises the rarity odds of your next drops.',
-    price: 300,
+    price: 380,
     where: 'field',
     effect: { kind: 'luck', value: 6 },
     minLevel: 10,
@@ -149,7 +149,7 @@ export const CONSUMABLES: ConsumableDef[] = [
     name: 'Fortune Incense',
     icon: '🕯️',
     description: 'Strongly raises drop rarity for a while.',
-    price: 900,
+    price: 1100,
     where: 'field',
     effect: { kind: 'luck', value: 18 },
     minLevel: 20,
@@ -169,4 +169,13 @@ export function fieldConsumables(): ConsumableDef[] {
 
 export function combatConsumables(): ConsumableDef[] {
   return CONSUMABLES.filter(c => c.where !== 'field');
+}
+
+/**
+ * What the trader actually charges for a consumable. Base prices are the
+ * level-1 price; they climb with the player's level so a potion stays worth
+ * roughly two or three fights' gold instead of becoming pocket change.
+ */
+export function supplyPrice(c: ConsumableDef, level: number): number {
+  return Math.round(c.price * (0.9 + 0.1 * Math.max(1, level)));
 }
