@@ -67,7 +67,7 @@ npm run i18n:check         # EN/FR completeness — must print "i18n check: OK"
 Level-1 normal fight ≈ 4 rounds / ~50% HP left without parrying; elites ~80% win; bosses 45–70%
 win at average parry skill, all clearly winnable at good skill. XP curve: 3 fights/level at L1 → 13 at L40.
 
-**Economy & inventory** — gold OR gems on any item (gems = ceil(gold/10), min 3); gem-only Relics
+**Economy & inventory** — gold OR gems on any item (gems = ceil(gold/20), min 2); gem-only Relics
 (set piece for your level, bag +6, fortune incense, potion bundle); Sell tab; trader only via the
 road lane, with a bag round-trip; collapsible sets with bonuses; Talents (2 points per level:
 Might/Guard/Vigor/Precision); scroll + filter bugs fixed.

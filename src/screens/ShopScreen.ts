@@ -74,9 +74,9 @@ function need(short: number, icon: string): string {
 
 const gold = (n: number) => t('common.gold_short', { n: fmtNum(n) });
 
-/** Gold → gem conversion for anything that has a gold price. */
+/** Gold → gem conversion for anything that has a gold price: 20 gold per gem, minimum 2. */
 export function gemPrice(gold: number): number {
-  return Math.max(3, Math.ceil(gold / 10));
+  return Math.max(2, Math.ceil(gold / 20));
 }
 
 /** Gold price of a piece of trader gear. */
