@@ -51,7 +51,7 @@ export const en: Dictionary = {
   'title.settings': 'Settings',
   'title.support': 'Support',
   'title.how_to_play': 'How to play',
-  'title.version': 'v0.1 · an endless road',
+  'title.version': 'v0.2 · an endless road',
   'title.journey': 'Your journey',
   'title.new_journey': 'A new road',
   'title.new_journey_sub': 'No save yet. Your first steps start here.',

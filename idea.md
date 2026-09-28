@@ -8,4 +8,4 @@
 
 
 
-![example](example.png)
+![example](image.png)

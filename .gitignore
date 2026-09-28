@@ -1,7 +1,53 @@
+# ---- dependencies & builds -------------------------------------------------
 node_modules/
 dist/
-android/
-ios/
-.capacitor/
 *.log
 .DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# ---- secrets: never commit ---------------------------------------------------
+# Environment files. Real AdMob ids / any keys live in *.local files only;
+# commit a *.example with placeholder values instead.
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Android signing (created by scripts/android-release.sh keystore). Losing the
+# upload keystore means you can never update the app on Play — back it up
+# OUTSIDE the repo (password manager / encrypted drive).
+*.jks
+*.keystore
+*.p12
+*.pem
+keystore/
+keystore.properties
+android/keystore.properties
+android/admob.properties
+
+# Play Console / Google service credentials, if ever added for CI uploads.
+play-service-account*.json
+google-services.json
+*service-account*.json
+
+# ---- native projects ---------------------------------------------------------
+# android/ IS committed (it holds the app id, SDK levels, icons, signing
+# config). Its own android/.gitignore excludes Gradle caches, build output,
+# local.properties and the web assets Capacitor copies in on `cap sync`.
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+android/app/release/
+*.apk
+*.aab
+*.aar
+*.idsig
+output-metadata.json
+
+# iOS is not scaffolded; if it ever is, commit it and ignore Pods/ + DerivedData/.
+ios/App/Pods/
+ios/DerivedData/
+.capacitor/

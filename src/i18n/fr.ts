@@ -51,7 +51,7 @@ export const fr: Dictionary = {
   'title.settings': 'Réglages',
   'title.support': 'Soutenir',
   'title.how_to_play': 'Comment jouer',
-  'title.version': 'v0.1 · une route sans fin',
+  'title.version': 'v0.2 · une route sans fin',
   'title.journey': 'Votre périple',
   'title.new_journey': 'Une nouvelle route',
   'title.new_journey_sub': 'Aucune sauvegarde. Vos premiers pas commencent ici.',

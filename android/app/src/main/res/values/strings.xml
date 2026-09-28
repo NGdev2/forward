@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Forward</string>
+    <string name="title_activity_main">Forward</string>
+    <string name="package_name">com.ngdev.forward</string>
+    <string name="custom_url_scheme">com.ngdev.forward</string>
+</resources>

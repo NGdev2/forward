@@ -29,7 +29,7 @@ npm run i18n:check         # EN/FR completeness — must print "i18n check: OK"
 - In DEV, `window.__game` is the `GameContext` (`state`, `goto('combat', {enemy})`, `save()`…)
   and, during a fight, `window.__combat` exposes `take(action)`, `simulateParry(offsetSec)`.
 - Save lives in `localStorage['forward-save-v2']`; old saves migrate. Settings → Reset starts fresh.
-- Automated QA scripts (Playwright, headless Chromium) live in the session scratchpad; the
+- Automated QA was done with throwaway Playwright scripts (headless Chromium, not kept in the repo); the
   approach is: seed a save, drive `__game`/`__combat`, assert zero `pageerror`, screenshot.
 
 ## 3. Architecture in one page
@@ -141,12 +141,23 @@ These are real; nobody has played the build on a physical phone yet.
 - [ ] Battery/thermal after 15 minutes (music scheduler + canvas at 60 fps).
 - [ ] Closed test on Play (12 testers, 14 days) — required for new personal developer accounts.
 
-## 7. Release checklist (when you're ready)
+## 7. Android build setup
+
+- Build machine: JDK 17 (`/usr/lib/jvm/java-17-openjdk-amd64`), Android SDK with platform 35
+  (`ANDROID_HOME=~/Android/Sdk`), Node 18+ (Node 22 if Capacitor is upgraded, see ADS-PLAN).
+- `android/` is committed (app id `com.ngdev.forward`, SDK levels, icons, signing config).
+  Build output, Gradle caches, `local.properties` and the web assets Capacitor copies in are
+  git-ignored; so are keystores, `keystore.properties` and any `.env*` file.
+- `npm run icons` re-renders launcher icons, splash screens, PWA icons and store graphics from
+  `scripts/icons/icon.html`.
+- `npm run android:debug` → debug APK; `npm run android:release` → signed AAB.
+
+## 8. Release checklist (when you're ready)
 1. Decide on monetisation: wire AdMob rewarded + Play Billing, or hide the placeholder buttons.
 2. `./scripts/android-release.sh keystore` once (back up `android/keystore/` and
    `android/keystore.properties` somewhere safe — losing them means never updating the app).
 3. Bump `versionCode`/`versionName` in `android/app/build.gradle`, then `npm run android:release`.
 4. Host `store/privacy-policy.md` at a public URL; fill the Play listing from `store/listing-*.md`;
-   icon 512×512 and feature graphic 1024×500 are rendered by the icon script; take real phone
+   icon 512×512 and feature graphic 1024×500 are in `store/assets/` (`npm run icons`); take real phone
    screenshots.
 5. Content rating (fantasy violence), data safety (no data), closed test, production.

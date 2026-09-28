@@ -29,4 +29,4 @@ No account, no internet needed, no forced ads. Play offline anywhere.
 
 **Content rating notes:** Fantasy violence (cartoon combat against monsters). No blood/gore beyond stylised effects, no gambling with real money, no user interaction, no data collection.
 
-**Assets (generated in the session scratchpad `icons/`):** store-icon-512.png (512×512), feature-1024x500.png (1024×500). Take phone screenshots (min 2, 16:9 or 9:16) from a real device or the emulator at 1080×2340.
+**Assets (`npm run icons` writes them to `store/assets/`):** store-icon-512.png (512×512), feature-1024x500.png (1024×500). Take phone screenshots (min 2, 16:9 or 9:16) from a real device or the emulator at 1080×2340.

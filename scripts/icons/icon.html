@@ -1,0 +1,67 @@
+<!doctype html><html><body style="margin:0;background:#222">
+<canvas id="c"></canvas>
+<script>
+// Forward emblem: a night road running to a sunlit horizon, a bold upward chevron.
+// kind: 'icon' (full launcher icon), 'fg' (adaptive-icon foreground, transparent),
+//       'splash' (emblem + wordmark on the night sky).
+function draw(kind, W, H) {
+  const c = document.getElementById('c'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  g.clearRect(0,0,W,H);
+  const S = Math.min(W,H);
+  const cx = W/2, cy = H/2;
+  // Adaptive-icon safe zone is the centre 66%.
+  const R = kind === 'fg' ? S*0.30 : kind === 'splash' ? S*0.22 : S*0.42;
+  if (kind !== 'fg') {
+    const bg = g.createLinearGradient(0,0,0,H);
+    bg.addColorStop(0,'#070a16'); bg.addColorStop(0.55,'#111834'); bg.addColorStop(1,'#1d1030');
+    g.fillStyle = bg; g.fillRect(0,0,W,H);
+    let seed = 7; const rnd = () => (seed = (seed*16807)%2147483647)/2147483647;
+    g.fillStyle = '#dfe6ff';
+    for (let i=0;i<Math.round(W*H/9000);i++){ const x=rnd()*W,y=rnd()*H*0.55,r=rnd()*S*0.004+S*0.001; g.globalAlpha=0.3+rnd()*0.6; g.beginPath(); g.arc(x,y,r,0,7); g.fill(); }
+    g.globalAlpha=1;
+  }
+  g.save(); g.translate(cx, cy);
+  const halo = g.createRadialGradient(0,-R*0.15,R*0.1,0,-R*0.15,R*1.35);
+  halo.addColorStop(0,'rgba(255,196,107,0.55)'); halo.addColorStop(0.45,'rgba(255,140,80,0.18)'); halo.addColorStop(1,'rgba(0,0,0,0)');
+  g.fillStyle = halo; g.beginPath(); g.arc(0,-R*0.15,R*1.35,0,7); g.fill();
+  const disc = g.createLinearGradient(0,-R,0,R);
+  disc.addColorStop(0,'#1a2450'); disc.addColorStop(0.5,'#0e1330'); disc.addColorStop(1,'#231338');
+  g.fillStyle = disc; g.beginPath(); g.arc(0,0,R,0,7); g.fill();
+  g.save(); g.beginPath(); g.arc(0,0,R*0.94,0,7); g.clip();
+  const sky = g.createLinearGradient(0,-R,0,R*0.1);
+  sky.addColorStop(0,'#141d48'); sky.addColorStop(0.7,'#3a2c5a'); sky.addColorStop(1,'#7a3b52');
+  g.fillStyle = sky; g.fillRect(-R,-R,2*R,R*1.1);
+  const sun = g.createLinearGradient(0,-R*0.55,0,R*0.1);
+  sun.addColorStop(0,'#ffe9b0'); sun.addColorStop(0.6,'#ffb454'); sun.addColorStop(1,'#ff6f5e');
+  g.fillStyle = sun; g.beginPath(); g.arc(0,R*0.08,R*0.42,Math.PI,0); g.fill();
+  const ground = g.createLinearGradient(0,R*0.08,0,R);
+  ground.addColorStop(0,'#1a1430'); ground.addColorStop(1,'#0a0a18');
+  g.fillStyle = ground; g.fillRect(-R,R*0.08,2*R,R);
+  const road = g.createLinearGradient(0,R*0.08,0,R);
+  road.addColorStop(0,'#5a4f7a'); road.addColorStop(1,'#2a2440');
+  g.fillStyle = road; g.beginPath(); g.moveTo(-R*0.04,R*0.08); g.lineTo(R*0.04,R*0.08); g.lineTo(R*0.62,R); g.lineTo(-R*0.62,R); g.closePath(); g.fill();
+  g.fillStyle = '#ffd99a';
+  for (let i=0;i<5;i++){ const t=i/5, t2=(i+0.5)/5; const y0=R*0.08+(R*0.92)*t*t, y1=R*0.08+(R*0.92)*t2*t2; const w=R*0.012+R*0.05*t; g.globalAlpha=0.25+t*0.6; g.fillRect(-w/2,y0,w,Math.max(2,y1-y0)); }
+  g.globalAlpha=1;
+  g.restore();
+  g.lineJoin='round'; g.lineCap='round';
+  g.strokeStyle='rgba(0,0,0,0.45)'; g.lineWidth=R*0.2;
+  g.beginPath(); g.moveTo(-R*0.46,R*0.42); g.lineTo(0,-R*0.34); g.lineTo(R*0.46,R*0.42); g.stroke();
+  const ch = g.createLinearGradient(0,-R*0.4,0,R*0.45);
+  ch.addColorStop(0,'#fff3cf'); ch.addColorStop(0.5,'#f2c14e'); ch.addColorStop(1,'#c9822b');
+  g.strokeStyle=ch; g.lineWidth=R*0.15;
+  g.beginPath(); g.moveTo(-R*0.46,R*0.4); g.lineTo(0,-R*0.36); g.lineTo(R*0.46,R*0.4); g.stroke();
+  g.strokeStyle='rgba(255,214,150,0.55)'; g.lineWidth=Math.max(2,R*0.045); g.beginPath(); g.arc(0,0,R*0.97,0,7); g.stroke();
+  g.strokeStyle='rgba(0,0,0,0.5)'; g.lineWidth=Math.max(1,R*0.02); g.beginPath(); g.arc(0,0,R*1.0,0,7); g.stroke();
+  g.restore();
+  if (kind === 'splash') {
+    g.fillStyle='#f6e7c8'; g.textAlign='center'; g.textBaseline='middle';
+    g.font = `800 ${Math.round(S*0.11)}px "Segoe UI", Roboto, sans-serif`;
+    g.letterSpacing = `${Math.round(S*0.012)}px`;
+    g.fillText('FORWARD', cx, cy + R*1.55);
+  }
+  return c.toDataURL('image/png');
+}
+window.draw = draw;
+</script></body></html>
