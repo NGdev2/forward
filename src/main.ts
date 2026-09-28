@@ -6,6 +6,7 @@ import { Sprites } from './render/sprites';
 import { Fx } from './render/fx';
 import { Audio } from './render/audio';
 import { Music } from './render/music';
+import { createAds } from './platform/ads';
 import { RunScreen } from './screens/RunScreen';
 import { CombatScreen } from './screens/CombatScreen';
 import { RewardScreen } from './screens/RewardScreen';
@@ -29,6 +30,19 @@ const music = new Music();
 music.setEnabled(state.stats.settings.music);
 music.setVolume(state.stats.settings.musicVolume);
 
+// While a rewarded ad is on screen the game goes quiet, then restores the
+// player's own audio settings (they may have muted one channel).
+const ads = createAds({
+  onOpen() {
+    music.setEnabled(false);
+    audio.setEnabled(false);
+  },
+  onClose() {
+    music.setEnabled(state.stats.settings.music);
+    audio.setEnabled(state.stats.settings.sfx);
+  }
+});
+
 const manager = new ScreenManager(root);
 
 const toastHost = document.createElement('div');
@@ -41,6 +55,7 @@ const ctx: GameContext = {
   fx,
   audio,
   music,
+  ads,
   goto(id: ScreenId, params: ScreenParams = {}) {
     fx.clear();
     void manager.goto(id, params);
@@ -76,8 +91,18 @@ const unlock = () => {
 };
 window.addEventListener('pointerdown', unlock, { once: true });
 
+// Phones kill backgrounded apps without warning: save whenever we're hidden.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) state.save();
+});
+window.addEventListener('pagehide', () => state.save());
+
 // Always open on the front door; Continue is one tap away.
 void manager.goto('title');
+
+// Ask for ad consent (where required) and warm up the first ad at launch,
+// as Google recommends, rather than when the player first taps an ad button.
+void ads.init();
 
 // Dev-only handle so the QA harness can jump straight to a screen.
 if (import.meta.env.DEV) {

@@ -26,3 +26,25 @@
 - if we cannot beat the current boss instead of returning to the road on the same step (when we meet the boss immediately and loose), it should be started from step 0 of this level instead to have possibility to get him 
 - for enemies some knife and daggers are directed inward.  looks strange and unrealistic. like enemy is close to harm himself instead of pointing to us...
 - filter in inventory add a new section with filtered objects instead if filtering current list. like this each we we click filter - on the bottom adds new inventory list. 
+
+
+
+# Round 2 (2026-09-28)
+
+Overall everything looks amazing and very interesting to play.
+
+## bugs
+- main menu shows "best run 0m" and it never changes, even after playing.
+- when my bag was full I couldn't change my equipment.
+- after buying bag slots (increase with gems) I got slots = NaN and gems = NaN. Because of that it was treated as 0 and I couldn't do anything about it.
+
+## inventory & trader
+- the normal bag is too small, it should be bigger.
+- keep increasing the bag at the trader, but with a limit of increases per trader, and a much bigger limit for the total (I increased it many times, reached the max and still wanted more space).
+- in the sell section add "sell by rarity" next to "sell all".
+
+## ads & monetisation
+- no limits for getting gems by watching ads, no limits for doubling a reward by ad — it's okay.
+- revive by watching an ad: 3 revives per fight.
+- hide gem packs and support tiers for now (don't remove them, we will very possibly return them one day).
+- prepare the real advertisements for the Android build (AdMob), except in debug mode when launched locally.

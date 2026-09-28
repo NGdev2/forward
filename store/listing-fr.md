@@ -22,4 +22,4 @@ Remplissez la jauge de route et le boss barre le passage. Chaque boss a ses phas
 📈 UNE VRAIE PROGRESSION
 Montez de niveau, dépensez des points de talent et voyez l'apparence de votre héros changer avec chaque pièce équipée. Une musique dynamique suit le danger.
 
-Sans compte, sans connexion, sans publicité imposée. Jouez hors ligne, partout.
+Sans compte et sans publicité imposée — seulement des pubs récompensées, quand vous choisissez d'en regarder une. Jouable hors ligne.

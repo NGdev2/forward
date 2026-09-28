@@ -5,11 +5,18 @@ def keystoreProps = new Properties()
 def keystoreFile = rootProject.file('keystore.properties')
 if (keystoreFile.exists()) keystoreProps.load(new FileInputStream(keystoreFile))
 
+// AdMob app id: debug builds always use Google's public TEST app id; release
+// builds read android/admob.properties (git-ignored — copy admob.properties.example).
+def admobProps = new Properties()
+def admobFile = rootProject.file('admob.properties')
+if (admobFile.exists()) admobProps.load(new FileInputStream(admobFile))
+def ADMOB_TEST_APP_ID = 'ca-app-pub-3940256099942544~3347511713'
+
 android {
-    namespace "com.ngdev.forward"
+    namespace "com.aidar.forward"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.ngdev.forward"
+        applicationId "com.aidar.forward"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 2
@@ -32,7 +39,11 @@ android {
         }
     }
     buildTypes {
+        debug {
+            manifestPlaceholders = [admobAppId: ADMOB_TEST_APP_ID]
+        }
         release {
+            manifestPlaceholders = [admobAppId: admobProps['appId'] ?: 'MISSING_ADMOB_APP_ID']
             if (keystoreFile.exists()) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'

@@ -22,6 +22,24 @@ KS_DIR=android/keystore
 KS=$KS_DIR/upload.jks
 PROPS=android/keystore.properties
 
+# Refuses to build a release that would ship test ads, placeholder ids or no
+# AdMob app id (the app would crash on launch without one).
+check_ads() {
+  local env=.env.production.local admob=android/admob.properties test=ca-app-pub-3940256099942544 fake=ca-app-pub-0000000000000000
+  [ -f "$env" ] || { echo "Missing $env — copy .env.example and fill in the real ad unit ids."; exit 1; }
+  [ -f "$admob" ] || { echo "Missing $admob — copy android/admob.properties.example and fill in the AdMob app id."; exit 1; }
+  grep -q '^VITE_ADS_MODE=live' "$env" || { echo "$env must set VITE_ADS_MODE=live for a release."; exit 1; }
+  for key in VITE_ADMOB_REWARDED_DOUBLE VITE_ADMOB_REWARDED_REVIVE VITE_ADMOB_REWARDED_GEMS; do
+    local v; v=$(grep "^$key=" "$env" | cut -d= -f2-)
+    [[ "$v" == ca-app-pub-*/* ]] || { echo "$key is missing or not an ad unit id (ca-app-pub-…/…)."; exit 1; }
+    [[ "$v" == $test* || "$v" == $fake* ]] && { echo "$key is still a test/placeholder id."; exit 1; }
+  done
+  local app; app=$(grep '^appId=' "$admob" | cut -d= -f2-)
+  [[ "$app" == ca-app-pub-*~* ]] || { echo "$admob appId must be an AdMob APP id (ca-app-pub-…~…)."; exit 1; }
+  [[ "$app" == $test* || "$app" == $fake* ]] && { echo "$admob appId is still a test/placeholder id."; exit 1; }
+  echo "Ads config OK (live ad units, real app id)."
+}
+
 case "${1:-bundle}" in
   keystore)
     mkdir -p "$KS_DIR"
@@ -37,6 +55,7 @@ case "${1:-bundle}" in
     ;;
   bundle)
     [ -f "$PROPS" ] || { echo "No $PROPS — run: $0 keystore"; exit 1; }
+    check_ads
     npm run build
     npx cap sync android
     ( cd android && ./gradlew bundleRelease )
@@ -45,6 +64,7 @@ case "${1:-bundle}" in
     ;;
   apk)
     [ -f "$PROPS" ] || { echo "No $PROPS — run: $0 keystore"; exit 1; }
+    check_ads
     npm run build
     npx cap sync android
     ( cd android && ./gradlew assembleRelease )

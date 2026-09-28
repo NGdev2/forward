@@ -1,19 +1,57 @@
 # Forward — Privacy Policy
 
-_Last updated: 2026-09-08_
+_Last updated: 2026-09-28_
 
-Forward ("the game") is developed and published by NGdev.
+Forward ("the game") is an Android game developed and published by NGdev
+(GitHub: NGdev2).
 
-**Data we collect: none.** The game does not collect, store, transmit or share any personal data. It does not require an account, does not access the internet, and does not use analytics, advertising SDKs or crash reporters.
+<!-- Before publishing: use the same developer name as your Google Play developer account. -->
 
-**Local storage.** Your progress (level, items, settings) is saved only on your device, in the app's private storage. Uninstalling the game deletes it. Nothing is uploaded.
+## Summary
+- No account, no sign-in. The game itself does not collect or store personal data on any
+  server.
+- Your progress is saved only on your device.
+- The game shows **optional rewarded ads** from Google AdMob. Ads appear only when you tap a
+  "Watch an ad" button. AdMob processes some data to serve and measure those ads, as
+  described below.
 
-**Permissions.** The Android package declares the INTERNET permission only because the underlying web-view framework requires it; the game makes no network requests.
+## Data stored on your device
+Your progress (level, items, statistics, settings) is saved in the app's private storage on
+your device. It is never uploaded. Uninstalling the game deletes it.
 
-**Children.** The game is suitable for general audiences and does not knowingly collect information from anyone, including children.
+## Advertising (Google AdMob)
+When you choose to watch a rewarded ad, the Google Mobile Ads SDK is used to request and show
+it. Google may collect and process:
+- your device's **advertising ID** (you can reset it or opt out of personalised ads in your
+  Android settings: *Settings → Privacy → Ads*),
+- your **IP address** and approximate location derived from it,
+- device and app information (model, OS version, app version) and ad interaction data
+  (for example, whether an ad was shown or completed), and diagnostics.
 
-**Future changes.** If a later version adds optional features that process data (for example rewarded ads or in-app purchases), this policy will be updated before those features ship, and the app listing will describe the change.
+This data is used by Google to show ads, measure them, and prevent fraud. It is handled
+under Google's Privacy Policy: https://policies.google.com/privacy, and
+"How Google uses information from sites or apps that use our services":
+https://policies.google.com/technologies/partner-sites.
 
-**Contact.** Questions about this policy: open an issue at https://github.com/NGdev2/runner.
+**Consent.** If you are in the European Economic Area, the United Kingdom or Switzerland, or
+in a US state with applicable privacy laws, the game asks for your choice through Google's
+consent form before any ad is requested. You can change your choice at any time in
+*Settings → Privacy & ads*. Without consent, AdMob may still show limited, non-personalised
+ads as permitted by law.
 
-_This page must be hosted at a public URL (for example GitHub Pages or the repository's README) and that URL entered in the Play Console "App content → Privacy policy" section._
+The game is not designed for children and its ads are configured for a teen audience.
+
+## Permissions
+- **Internet** — needed to load ads. The rest of the game works offline.
+- **Advertising ID** (`AD_ID`) — used by the Google Mobile Ads SDK as described above.
+
+## Purchases
+The game currently has no in-app purchases. If they are added, this policy will be updated
+before they ship.
+
+## Changes
+If this policy changes, the updated version will be published at the same address with a new
+"Last updated" date.
+
+## Contact
+Questions about this policy: open an issue at https://github.com/NGdev2/runner.

@@ -388,7 +388,7 @@ export const fr: Dictionary = {
   'reward.bag_full_sold': 'Sac plein — {name} vendu',
   'reward.bag_full_old': "Sac plein — nulle part où ranger l'ancien",
   'reward.equipped_toast': '{name} équipé',
-  'reward.doubled': 'Doublé ! (pub à venir)',
+  'reward.doubled': 'Doublé !',
 
   /* ------------------------------------------------------ item detail -- */
   'detail.power': 'puissance',
@@ -521,9 +521,9 @@ export const fr: Dictionary = {
   'shop.store_note': 'Boutique non connectée — ce sont des exemples.',
   'shop.best_value': 'Meilleure offre',
   'shop.iap_disabled': 'Les achats intégrés ne sont pas encore activés.',
-  'shop.free_gems': '10 💎 gratuites',
+  'shop.free_gems': '{n} 💎 gratuites',
   'shop.watch_ad': 'Regarder une courte pub',
-  'shop.free_gems_toast': '+10 gemmes (pub à venir)',
+  'shop.free_gems_toast': '+{n} gemmes',
 
   /* =================================================================== */
   /* CONTENT — keyed by id; English falls back to the data tables.       */
@@ -1333,5 +1333,23 @@ export const fr: Dictionary = {
   'biome.emberdeep': 'Tréfonds de braise',
   'biome.emberdeep.flavor': 'Le sol respire. Restez au milieu de la route.',
   'biome.voidreach': 'Confins du Néant',
-  'biome.voidreach.flavor': "La route continue. Rien d'autre."
+  'biome.voidreach.flavor': "La route continue. Rien d'autre.",
+  'reward.overflow_note': 'Sac plein — vendu {n} 🪙 en partant, sauf si vous l\'équipez',
+  'reward.sell_now': 'Vendre · {n} 🪙',
+  'reward.sold_toast': '{name} vendu pour {n} 🪙',
+  'reward.bag_full_sold_n_one': 'Sac plein — 1 objet vendu pour {gold} 🪙',
+  'reward.bag_full_sold_n_other': 'Sac plein — {n} objets vendus pour {gold} 🪙',
+  'ads.unavailable': 'Aucune pub disponible pour le moment. Réessayez dans un instant.',
+  'combat.revives_left': 'encore {n}/{max}',
+  'shop.bag_trader_out': 'Ce marchand n\'en a plus ({n} par marchand). Le suivant en aura.',
+  'shop.bag_left_here': 'encore {n} ici',
+  'shop.free_gems_note': 'Regardez une courte pub pour gagner {n} 💎.',
+  'inventory.sell_by_rarity': 'Vendre par rareté · garde les améliorations',
+  'inventory.sell_confirm': 'Touchez encore : vendre {n} {rarity}',
+  'title.distance': 'Distance',
+  'stats.distance': 'Distance parcourue',
+  'settings.section_privacy': 'Confidentialité',
+  'settings.privacy_ads': 'Confidentialité et pubs',
+  'settings.privacy_ads_desc': 'Consulter ou modifier l\'usage de vos données par les pubs.',
+  'settings.privacy_ads_open': 'Gérer'
 };

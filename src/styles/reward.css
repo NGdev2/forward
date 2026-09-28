@@ -118,7 +118,7 @@
   position: relative;
   display: grid;
   grid-template-columns: 76px 1fr;
-  grid-template-areas: 'tile detail' 'set set' 'equip equip';
+  grid-template-areas: 'tile detail' 'set set' 'note note' 'equip equip' 'sell sell';
   gap: var(--sp-3);
   padding: var(--sp-3);
   border-radius: var(--radius-lg);
@@ -135,6 +135,18 @@
 .rw-drop-tile { grid-area: tile; }
 .rw-drop .item-detail { grid-area: detail; }
 .rw-equip { grid-area: equip; width: 100%; }
+.rw-sell { grid-area: sell; width: 100%; }
+.rw-overflow {
+  grid-area: note;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius);
+  border: 1px dashed var(--danger-dim);
+  color: var(--danger-hi);
+  font-size: var(--fs-xs);
+  text-align: center;
+}
+.rw-drop.is-overflow { border-style: dashed; }
+.rw-drop.is-sold { opacity: 0.45; filter: grayscale(0.6); }
 .rw-set {
   --el: var(--accent);
   --el-soft: var(--accent-glow);

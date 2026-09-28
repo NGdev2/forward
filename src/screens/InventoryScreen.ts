@@ -19,7 +19,8 @@ import {
   openSheet,
   rarityClass,
   rarityVar,
-  sortItems
+  sortItems,
+  raritySellBar
 } from './inventory/ui';
 import {
   desc as cdesc,
@@ -361,6 +362,16 @@ export class InventoryScreen implements Screen {
     sellBtn.addEventListener('click', () => this.sellJunk());
     junkBar.appendChild(sellBtn);
     this.panel.appendChild(junkBar);
+
+    const byRarity = raritySellBar(state, (n, earned) => {
+      this.ctx.audio.play('coin');
+      this.ctx.toast(t('inventory.sold_many', { n, gold: gold(earned) }), 'good');
+      this.ctx.save();
+      this.renderHeader();
+      this.renderTabs();
+      this.renderPanel(true);
+    });
+    if (byRarity) this.panel.appendChild(byRarity);
 
     const items = state.stats.inventory.filter(i => this.filter === 'all' || i.slot === this.filter);
     const grid = el('div', 'bag-grid');

@@ -22,11 +22,11 @@ Fill the road meter and the boss blocks the way. Each boss has phases, passives 
 📈 REAL PROGRESSION
 Level up, spend talent points, and watch your hero's look change with every piece you equip. Dynamic music follows the danger.
 
-No account, no internet needed, no forced ads. Play offline anywhere.
+No account needed and no forced ads — optional rewarded ads only, when you choose to watch one. Plays offline.
 
 **Category:** Games › Role Playing
 **Tags:** RPG, runner, roguelite, offline, turn-based, loot
 
-**Content rating notes:** Fantasy violence (cartoon combat against monsters). No blood/gore beyond stylised effects, no gambling with real money, no user interaction, no data collection.
+**Content rating notes:** Fantasy violence (cartoon combat against monsters). No blood/gore beyond stylised effects, no gambling with real money, no user interaction. Contains ads (optional rewarded ads via Google AdMob).
 
 **Assets (`npm run icons` writes them to `store/assets/`):** store-icon-512.png (512×512), feature-1024x500.png (1024×500). Take phone screenshots (min 2, 16:9 or 9:16) from a real device or the emulator at 1080×2340.

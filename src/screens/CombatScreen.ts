@@ -51,6 +51,8 @@ const MIN_HOLD: Partial<Record<CombatEvent['kind'], number>> = {
 
 /** Parry timing window on each side of impact, seconds. */
 const PARRY_WINDOW = 0.11;
+/** Second Wind (rewarded-ad revive) uses allowed per fight. */
+const MAX_REVIVES = 3;
 /** How long the enemy's lunge takes during the QTE. */
 const QTE_APPROACH = 1.0;
 /** The banner sits alone for this long before the lunge starts. */
@@ -99,6 +101,8 @@ export class CombatScreen implements Screen {
   private beatTimer = 0;
   private busy = true;
   private finished = false;
+  /** Second Wind revives used in this fight. */
+  private revives = 0;
   private phase: Phase = 'intro';
   private pendingOutcome: TurnResult['status'] = 'ongoing';
   private pendingIncoming: TurnResult['incoming'] = undefined;
@@ -131,6 +135,7 @@ export class CombatScreen implements Screen {
     this.queue = [];
     this.beatTimer = 0;
     this.busy = true;
+    this.revives = 0;
     this.finished = false;
     this.phase = 'intro';
     this.pendingOutcome = 'ongoing';
@@ -833,12 +838,28 @@ export class CombatScreen implements Screen {
       ${boss ? `<p class="cb-end-line cb-end-warn">${esc(t('combat.lose_boss', { name: this.enemy.name }))}</p>` : ''}
       <p class="cb-end-cost">−${lost} 🪙</p>`);
 
+    // Second Wind: watch a rewarded ad to get back up, at most
+    // MAX_REVIVES times per fight.
+    const revivesLeft = MAX_REVIVES - this.revives;
     const revive = document.createElement('button');
     revive.className = 'btn btn-gold btn-block cb-revive';
-    revive.innerHTML = `<i>📺</i> ${esc(t('combat.second_wind'))} <u>${esc(t('combat.watch_ad'))}</u>`;
-    revive.addEventListener('click', () => {
+    revive.innerHTML = `<i>📺</i> ${esc(t('combat.second_wind'))} <u>${esc(t('combat.watch_ad'))} · ${esc(t('combat.revives_left', { n: revivesLeft, max: MAX_REVIVES }))}</u>`;
+    revive.hidden = !ctx.ads.available || revivesLeft <= 0;
+    revive.addEventListener('click', async () => {
+      if (revive.disabled) return;
+      revive.disabled = true;
+      revive.classList.add('is-loading');
+      const fight = this.combat;
+      const outcome = await ctx.ads.show('revive');
+      if (fight !== this.combat || this.combat.status !== 'lost') return; // left the fight meanwhile
+      revive.classList.remove('is-loading');
+      if (outcome !== 'rewarded') {
+        revive.disabled = false;
+        if (outcome !== 'dismissed') ctx.toast(t('ads.unavailable'), 'info');
+        return;
+      }
+      this.revives += 1;
       ctx.audio.play('levelup');
-      ctx.toast(t('combat.ad_placeholder'), 'info');
       ctx.state.stats.hp = Math.max(1, Math.round(ctx.state.maxHp * 0.6));
       this.enemy.hp = Math.max(1, Math.round(this.enemy.hp * 0.5));
       ctx.save();

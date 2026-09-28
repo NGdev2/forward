@@ -330,6 +330,9 @@ export class RunScreen implements Screen {
   }
 
   unmount() {
+    // Distance accrues every frame but encounters only save on arrival;
+    // persist it when leaving the road so it's never lost.
+    this.ctx.save();
     for (const fn of this.cleanups) fn();
     this.cleanups = [];
     for (const t of this.timers) window.clearTimeout(t);

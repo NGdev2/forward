@@ -382,3 +382,6 @@ html.reduce-motion .screen-layer.is-leaving {
   transform: none;
   filter: none;
 }
+
+/* The `hidden` attribute must win over component display rules. */
+[hidden] { display: none !important; }

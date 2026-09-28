@@ -6,6 +6,7 @@ import type { Language } from '../game/types';
 import { el, listeners, q } from '../ui/dom';
 import { button, optionRow, segmented, sheet, slider, toggle } from '../ui/components';
 import type { SheetHandle } from '../ui/components';
+import { FEATURES } from '../platform/features';
 import { LANGUAGES, fmtNum, getLanguage, name as cname, onLanguageChange, setLanguage, t, tn } from '../i18n';
 
 /* ============================================================================
@@ -121,7 +122,7 @@ export class TitleScreen implements Screen {
             <button class="dock-btn" id="dock-hero"><i>🛡️</i><span data-i18n="title.hero"></span></button>
             <button class="dock-btn" id="dock-stats"><i>📜</i><span data-i18n="title.statistics"></span></button>
             <button class="dock-btn" id="dock-settings"><i>⚙️</i><span data-i18n="title.settings"></span></button>
-            <button class="dock-btn dock-btn-gold" id="dock-support"><i>💛</i><span data-i18n="title.support"></span></button>
+            ${FEATURES.iap ? `<button class="dock-btn dock-btn-gold" id="dock-support"><i>💛</i><span data-i18n="title.support"></span></button>` : ''}
             <button class="dock-btn" id="dock-help"><i>❔</i><span data-i18n="title.how_to_play"></span></button>
           </nav>
           <p class="title-version" data-i18n="title.version"></p>
@@ -146,7 +147,8 @@ export class TitleScreen implements Screen {
     this.off.on(q(screen, '#dock-hero'), 'click', () => this.tap(() => ctx.goto('inventory', { from: 'title' })));
     this.off.on(q(screen, '#dock-stats'), 'click', () => this.tap(() => this.openStats()));
     this.off.on(q(screen, '#dock-settings'), 'click', () => this.tap(() => this.openSettings()));
-    this.off.on(q(screen, '#dock-support'), 'click', () => this.tap(() => this.openSupport()));
+    // Support tiers need Play Billing; hidden (not removed) until FEATURES.iap.
+    if (FEATURES.iap) this.off.on(q(screen, '#dock-support'), 'click', () => this.tap(() => this.openSupport()));
     this.off.on(q(screen, '#dock-help'), 'click', () => this.tap(() => this.openHelp()));
 
     this.unsubLang = onLanguageChange(() => this.applyTexts());
@@ -184,7 +186,7 @@ export class TitleScreen implements Screen {
     grid.append(
       cell(t('common.level'), String(s.level), 'is-accent'),
       cell(t('common.world'), String((s.worldCycle ?? 0) + 1), 'is-gold'),
-      cell(t('title.best_run'), t('common.meters', { n: fmtNum(Math.round(s.bestDistance ?? 0)) }), 'is-gem')
+      cell(t('title.distance'), t('common.meters', { n: fmtNum(Math.round(s.distance ?? 0)) }), 'is-gem')
     );
     card.appendChild(grid);
     const foot = el('div', { class: 'journey-foot' });
@@ -276,7 +278,7 @@ export class TitleScreen implements Screen {
     section(t('stats.section_progress'), [
       ['⭐', t('stats.best_level'), num(st.bestLevel)],
       ['🌍', t('stats.best_world'), num((st.bestCycle ?? 0) + 1)],
-      ['🛣️', t('stats.best_distance'), t('common.meters', { n: num(st.bestDistance) })]
+      ['🛣️', t('stats.distance'), t('common.meters', { n: num(st.distance) })]
     ]);
 
     // Top five most-killed enemies, with their portraits.
@@ -462,6 +464,18 @@ export class TitleScreen implements Screen {
         )
       )
     );
+
+    // Google requires a way to revisit ad consent wherever consent applies.
+    if (ctx.ads.privacyOptionsRequired) {
+      s.body.appendChild(el('p', { class: 'section-label settings-label' }, t('settings.section_privacy')));
+      s.body.appendChild(
+        optionRow(
+          t('settings.privacy_ads'),
+          t('settings.privacy_ads_desc'),
+          button(t('settings.privacy_ads_open'), { variant: 'ghost', onClick: () => void ctx.ads.showPrivacyOptions() })
+        )
+      );
+    }
 
     s.body.appendChild(el('p', { class: 'section-label settings-label is-danger' }, t('settings.section_danger')));
     s.body.appendChild(button(t('settings.reset'), { variant: 'danger', block: true, onClick: () => this.confirmReset(s) }));

@@ -4,7 +4,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 // Play. Change it here and in android/app/build.gradle (applicationId) before
 // that first upload if you want a different one.
 const config: CapacitorConfig = {
-  appId: 'com.ngdev.forward',
+  appId: 'com.aidar.forward',
   appName: 'Forward',
   webDir: 'dist',
   server: {

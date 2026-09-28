@@ -1,5 +1,6 @@
 import type { EquipSlot, EquipmentSet, ItemInstance, Rarity, StatKey } from '../../game/types';
-import { STAT_ICONS, formatStat, formatStatSigned } from '../../game/config';
+import { RARITY_TIERS, STAT_ICONS, formatStat, formatStatSigned } from '../../game/config';
+import type { GameState } from '../../game/state';
 import { compareItems, itemQuality } from '../../game/loot';
 import { ABILITY_LABELS, setById, setPieces, wornSetCounts, type SetElement } from '../../game/data/items';
 import {
@@ -311,4 +312,66 @@ export function sortItems(items: ItemInstance[], mode: SortMode): ItemInstance[]
     default:
       return list.reverse();
   }
+}
+
+/* ------------------------------------------------------- sell by rarity -- */
+
+/** Rarities at or above this need a second tap to sell in bulk. */
+const CONFIRM_FROM: Rarity[] = ['epic', 'legendary', 'mythic'];
+
+/**
+ * A row of chips, one per rarity present in the bag: "Common ×7 · 84 🪙".
+ * Tapping sells every bag item of that rarity EXCEPT upgrades over what is
+ * worn. Epic and above arm on the first tap and sell on the second, so a
+ * stray tap can't throw away good gear.
+ */
+export function raritySellBar(state: GameState, onSold: (count: number, gold: number) => void): HTMLElement | null {
+  const bar = el('div', 'rarity-sell');
+  const groups = RARITY_TIERS.map(tier => {
+    const items = state.stats.inventory.filter(i => i.rarity === tier.id && !state.isUpgrade(i));
+    return { tier, items, gold: items.reduce((s, i) => s + state.sellValue(i), 0) };
+  }).filter(g => g.items.length > 0);
+  if (!groups.length) return null;
+
+  bar.appendChild(el('span', 'rarity-sell-label', esc(t('inventory.sell_by_rarity'))));
+  const chips = el('div', 'rarity-sell-chips');
+  let armed: HTMLButtonElement | null = null;
+  let disarm = 0;
+  for (const g of groups) {
+    const chip = el('button', 'rarity-sell-chip');
+    chip.style.setProperty('--rc', rarityVar(g.tier.id));
+    const label = `${rarityLabel(g.tier.id)} ×${g.items.length} · ${g.gold} 🪙`;
+    chip.textContent = label;
+    chip.addEventListener('click', () => {
+      if (CONFIRM_FROM.includes(g.tier.id) && armed !== chip) {
+        if (armed) armed.textContent = armed.dataset.label ?? '';
+        armed?.classList.remove('is-armed');
+        armed = chip;
+        chip.dataset.label = label;
+        chip.classList.add('is-armed');
+        chip.textContent = t('inventory.sell_confirm', { n: g.items.length, rarity: rarityLabel(g.tier.id) });
+        window.clearTimeout(disarm);
+        disarm = window.setTimeout(() => {
+          chip.classList.remove('is-armed');
+          chip.textContent = label;
+          if (armed === chip) armed = null;
+        }, 3000);
+        return;
+      }
+      window.clearTimeout(disarm);
+      let gold = 0;
+      let count = 0;
+      for (const item of g.items) {
+        const got = state.sellItem(item.uid);
+        if (got > 0) {
+          gold += got;
+          count += 1;
+        }
+      }
+      onSold(count, gold);
+    });
+    chips.appendChild(chip);
+  }
+  bar.appendChild(chips);
+  return bar;
 }

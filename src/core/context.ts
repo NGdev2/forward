@@ -1,5 +1,6 @@
 import type { GameState } from '../game/state';
 import type { AudioKit, FxKit, MusicKit, SpriteKit } from '../render/api';
+import type { AdService } from '../platform/ads';
 import type { CombatResult, EncounterNode, EnemyInstance, ItemInstance, Rarity } from '../game/types';
 
 export type ScreenId = 'title' | 'run' | 'combat' | 'reward' | 'inventory' | 'shop';
@@ -80,6 +81,8 @@ export interface GameContext {
   fx: FxKit;
   audio: AudioKit;
   music: MusicKit;
+  /** Rewarded ads (mock in dev, AdMob on Android, none on the web build). */
+  ads: AdService;
   goto(id: ScreenId, params?: ScreenParams): void;
   toast(message: string, kind?: ToastKind): void;
   /** Persists state; call after anything meaningful changes. */

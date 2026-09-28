@@ -5,7 +5,7 @@ import { elementBadge, itemDetail, itemTile, rarityVar } from './inventory/ui';
 import { rarityById } from '../game/config';
 import { setById, setPieces, wornSetCounts } from '../game/data/items';
 import { biomeFor } from './run/biomes';
-import { itemDisplayName, name as cname, t } from '../i18n';
+import { itemDisplayName, name as cname, t, tn } from '../i18n';
 
 /* ============================================================================
  * The payoff screen.
@@ -21,6 +21,11 @@ interface Applied {
   healed: number;
   levels: number;
   loot: ItemInstance[];
+  /**
+   * Drops that did not fit in a full bag. They are still shown so the player
+   * can wear or sell them; whatever is left is sold when the screen is left.
+   */
+  overflow: Set<string>;
 }
 
 export class RewardScreen implements Screen {
@@ -33,12 +38,17 @@ export class RewardScreen implements Screen {
   private cleanups: (() => void)[] = [];
   private timers: number[] = [];
   private doubled = false;
+  private adPending = false;
+  /** Bumped on every mount so an ad finishing after the player left is ignored. */
+  private visit = 0;
   private revealIn = 0.28;
   private revealQueue: HTMLElement[] = [];
 
   mount(root: HTMLElement, ctx: GameContext, params: ScreenParams) {
     this.ctx = ctx;
     this.params = params as RewardParams;
+    this.visit += 1;
+    this.adPending = false;
     // Singleton screen: reset per-visit fields before anything reads them.
     this.doubled = false;
     this.revealIn = 0.28;
@@ -95,20 +105,20 @@ export class RewardScreen implements Screen {
     if (!loot.length && p.lootCount) {
       loot = rollLoot(p.lootCount, state.stats.level, state.luck, p.lootRarity);
     }
-    // Anything that will not fit is auto-sold rather than silently lost.
+    // Anything that will not fit stays on this screen as "overflow": it can
+    // still be equipped (the old piece goes into the bag) or sold on the spot,
+    // and is sold automatically when the player leaves.
     const kept: ItemInstance[] = [];
+    const overflow = new Set<string>();
     for (const item of loot) {
-      if (state.addItem(item)) kept.push(item);
-      else {
-        state.stats.gold += state.sellValue(item);
-        this.ctx.toast(t('reward.bag_full_sold', { name: itemDisplayName(item) }), 'info');
-      }
+      if (!state.addItem(item)) overflow.add(item.uid);
+      kept.push(item);
     }
 
     if (p.bossDefeated) state.onBossDefeated();
     else if (p.grantProgress !== false) state.gainProgress();
 
-    return { gold, xp: p.xp ?? 0, healed, levels: levelling.levels, loot: kept };
+    return { gold, xp: p.xp ?? 0, healed, levels: levelling.levels, loot: kept, overflow };
   }
 
   /** Rarity of the best item dropped, for the screen's colour treatment. */
@@ -152,7 +162,7 @@ export class RewardScreen implements Screen {
       </div>
 
       <div class="rw-foot">
-        ${p.allowDouble ? `<button class="btn btn-gold btn-block rw-double"><i>📺</i><span>${esc(t('reward.double'))}<u>${esc(t('reward.watch_ad'))}</u></span></button>` : ''}
+        ${p.allowDouble && this.ctx.ads.available ? `<button class="btn btn-gold btn-block rw-double"><i>📺</i><span>${esc(t('reward.double'))}<u>${esc(t('reward.watch_ad'))}</u></span></button>` : ''}
         <div class="rw-foot-row">
           <button class="btn btn-ghost rw-bag">🎒 ${esc(t('common.bag'))}</button>
           <button class="btn btn-primary btn-cta rw-go">${esc(t('reward.keep_going'))}</button>
@@ -220,12 +230,38 @@ export class RewardScreen implements Screen {
         equip.classList.toggle('btn-primary', !worn && this.ctx.state.isUpgrade(item));
         equip.classList.toggle('btn-ghost', worn || !this.ctx.state.isUpgrade(item));
       };
+      const overflowed = () => this.applied.overflow.has(item.uid);
+      const note = document.createElement('div');
+      note.className = 'rw-overflow';
+      const sell = document.createElement('button');
+      sell.className = 'btn btn-sm btn-gold rw-sell';
+      const refreshOverflow = () => {
+        const on = overflowed();
+        card.classList.toggle('is-overflow', on);
+        note.hidden = !on;
+        sell.hidden = !on;
+        note.textContent = t('reward.overflow_note', { n: this.ctx.state.sellValue(item) });
+        sell.textContent = t('reward.sell_now', { n: this.ctx.state.sellValue(item) });
+      };
+      sell.addEventListener('click', () => {
+        if (!overflowed()) return;
+        this.applied.overflow.delete(item.uid);
+        const gold = this.ctx.state.sellValue(item);
+        this.ctx.state.stats.gold += gold;
+        this.ctx.audio.play('coin');
+        this.ctx.toast(t('reward.sold_toast', { name: itemDisplayName(item), n: gold }), 'good');
+        this.ctx.save();
+        card.classList.add('is-sold');
+        equip.disabled = true;
+        sell.disabled = true;
+      });
+
       equip.addEventListener('click', () => {
-        const res = this.ctx.state.equip(item);
-        if (res.blocked) {
-          this.ctx.toast(t('reward.bag_full_old'), 'bad');
-          return;
-        }
+        // An overflow drop was never added to the bag; wearing it is a swap
+        // that puts the old piece in the bag, even if that overfills it.
+        this.applied.overflow.delete(item.uid);
+        this.ctx.state.equip(item);
+        refreshOverflow();
         this.ctx.audio.play('loot');
         this.ctx.toast(t('reward.equipped_toast', { name: itemDisplayName(item) }), 'good');
         this.ctx.save();
@@ -238,7 +274,10 @@ export class RewardScreen implements Screen {
         detail = fresh;
       });
       refresh();
+      refreshOverflow();
+      card.appendChild(note);
       card.appendChild(equip);
+      card.appendChild(sell);
 
       host.appendChild(card);
       this.revealQueue.push(card);
@@ -256,11 +295,29 @@ export class RewardScreen implements Screen {
   }
 
   private wire() {
-    this.bind('.rw-go', () => this.ctx.goto('run'));
+    this.bind('.rw-go', () => {
+      this.settleOverflow();
+      this.ctx.goto('run');
+    });
     // "Back" from the bag must land on the road, never here: remounting the
     // reward screen would apply the reward again.
-    this.bind('.rw-bag', () => this.ctx.goto('inventory', { from: 'run' }));
+    this.bind('.rw-bag', () => {
+      this.settleOverflow();
+      this.ctx.goto('inventory', { from: 'run' });
+    });
     this.bind('.rw-double', () => this.double());
+  }
+
+  /** Sells every overflow drop the player didn't wear or sell by hand. */
+  private settleOverflow() {
+    const left = this.applied.loot.filter(i => this.applied.overflow.has(i.uid));
+    if (!left.length) return;
+    let gold = 0;
+    for (const item of left) gold += this.ctx.state.sellValue(item);
+    this.ctx.state.stats.gold += gold;
+    this.applied.overflow.clear();
+    this.ctx.save();
+    this.ctx.toast(tn('reward.bag_full_sold_n', left.length, { gold }), 'info');
   }
 
   private bind(sel: string, fn: () => void) {
@@ -278,12 +335,24 @@ export class RewardScreen implements Screen {
    * Rewarded-ad double-up. The ad SDK is deliberately not wired yet — this is
    * the placeholder surface the real integration will drop into.
    */
-  private double() {
-    if (this.doubled) return;
+  private async double() {
+    if (this.doubled || this.adPending) return;
+    const btn = this.el.querySelector('.rw-double') as HTMLButtonElement;
+    const visit = this.visit;
+    this.adPending = true;
+    btn.disabled = true;
+    btn.classList.add('is-loading');
+    const outcome = await this.ctx.ads.show('double_reward');
+    this.adPending = false;
+    if (visit !== this.visit) return; // the player left while the ad was up
+    btn.classList.remove('is-loading');
+    if (outcome !== 'rewarded') {
+      btn.disabled = false;
+      if (outcome !== 'dismissed') this.ctx.toast(t('ads.unavailable'), 'info');
+      return;
+    }
     this.doubled = true;
-    const btn = this.el.querySelector('.rw-double') as HTMLElement;
     btn.classList.add('is-spent');
-    (btn as HTMLButtonElement).disabled = true;
 
     const extraGold = this.applied.gold;
     const extraXp = this.applied.xp;

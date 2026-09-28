@@ -1,4 +1,4 @@
-package com.ngdev.forward;
+package com.aidar.forward;
 
 import com.getcapacitor.BridgeActivity;
 

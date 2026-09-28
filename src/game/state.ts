@@ -109,7 +109,7 @@ function freshStats(): PlayerStats {
     talents: { might: 0, guard: 0, vigor: 0, precision: 0 },
     equipment: startingEquipment(),
     inventory: [],
-    inventoryCap: 24,
+    inventoryCap: BAG_CAP_BASE,
     consumables: { potion_small: 2 },
     settings: {
       sfx: true,
@@ -122,6 +122,28 @@ function freshStats(): PlayerStats {
     },
     onboarded: false
   };
+}
+
+/** Bag size a new hero starts with. Old saves are raised to this on load. */
+export const BAG_CAP_BASE = 40;
+/** Hard ceiling on bag size, reached by buying expansions from traders. */
+export const BAG_CAP_MAX = 200;
+
+/**
+ * Replaces every numeric stat that isn't a finite number with the fresh-save
+ * default. A single NaN (e.g. a price computed from a missing field) used to
+ * poison gems/bag size forever: NaN serialises as null, and every later
+ * comparison against it fails silently.
+ */
+function repairNumbers(target: Record<string, unknown>, defaults: Record<string, unknown>) {
+  for (const [key, def] of Object.entries(defaults)) {
+    const v = target[key];
+    if (typeof def === 'number') {
+      if (typeof v !== 'number' || !Number.isFinite(v)) target[key] = def;
+    } else if (def && typeof def === 'object' && !Array.isArray(def) && v && typeof v === 'object' && !Array.isArray(v)) {
+      repairNumbers(v as Record<string, unknown>, def as Record<string, unknown>);
+    }
+  }
 }
 
 export interface EquipResult {
@@ -160,14 +182,32 @@ export class GameState {
       }
       if (!parsed.killsById || typeof parsed.killsById !== 'object') parsed.killsById = {};
       parsed.talents = { ...fresh.talents, ...(parsed.talents ?? {}) };
+      GameState.repair(parsed);
       return parsed;
     } catch {
       return null;
     }
   }
 
+  /** Fixes corrupted numbers and applies bag-size rules. Runs on load and before every save. */
+  private static repair(stats: PlayerStats) {
+    const fresh = freshStats();
+    repairNumbers(stats as unknown as Record<string, unknown>, fresh as unknown as Record<string, unknown>);
+    for (const [id, n] of Object.entries(stats.consumables ?? {})) {
+      if (typeof n !== 'number' || !Number.isFinite(n) || n < 0) stats.consumables[id] = 0;
+    }
+    for (const [id, n] of Object.entries(stats.killsById ?? {})) {
+      if (typeof n !== 'number' || !Number.isFinite(n)) delete stats.killsById[id];
+    }
+    stats.gems = Math.max(0, Math.round(stats.gems));
+    stats.gold = Math.max(0, Math.round(stats.gold));
+    stats.inventoryCap = Math.min(BAG_CAP_MAX, Math.max(BAG_CAP_BASE, Math.round(stats.inventoryCap)));
+    if (stats.bestDistance < stats.distance) stats.bestDistance = stats.distance;
+  }
+
   save() {
     try {
+      GameState.repair(this.stats);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.stats));
     } catch {
       /* storage unavailable (private mode) — progression just won't persist */
@@ -263,18 +303,20 @@ export class GameState {
     return gained;
   }
 
+  /** Refuses non-finite or negative prices instead of corrupting the purse. */
   spendGold(n: number): boolean {
-    if (this.stats.gold < n) return false;
+    if (!Number.isFinite(n) || n < 0 || this.stats.gold < n) return false;
     this.stats.gold -= n;
     return true;
   }
 
   addGems(n: number) {
-    this.stats.gems += n;
+    if (!Number.isFinite(n)) return;
+    this.stats.gems += Math.round(n);
   }
 
   spendGems(n: number): boolean {
-    if (this.stats.gems < n) return false;
+    if (!Number.isFinite(n) || n < 0 || this.stats.gems < n) return false;
     this.stats.gems -= n;
     return true;
   }
@@ -368,6 +410,8 @@ export class GameState {
   }
 
   addDistance(meters: number) {
+    if (!Number.isFinite(meters) || meters <= 0) return;
+    if (!Number.isFinite(this.stats.distance)) this.stats.distance = 0;
     this.stats.distance += meters;
     if (this.stats.distance > this.stats.bestDistance) {
       this.stats.bestDistance = this.stats.distance;
@@ -384,12 +428,13 @@ export class GameState {
     return this.stats.inventory.length >= this.stats.inventoryCap;
   }
 
-  /** Hard ceiling on bag size — the grid stays readable on a phone. */
-  static readonly BAG_CAP_MAX = 60;
+  static readonly BAG_CAP_MAX = BAG_CAP_MAX;
 
-  /** Grows the bag by `n` slots (bought from the trader). Returns the new cap. */
+  /** Grows the bag by `n` slots (bought from a trader). Returns the new cap. */
   expandBag(n: number): number {
-    this.stats.inventoryCap = Math.min(GameState.BAG_CAP_MAX, this.stats.inventoryCap + Math.max(0, Math.round(n)));
+    const cap = Number.isFinite(this.stats.inventoryCap) ? this.stats.inventoryCap : BAG_CAP_BASE;
+    const add = Number.isFinite(n) ? Math.max(0, Math.round(n)) : 0;
+    this.stats.inventoryCap = Math.min(BAG_CAP_MAX, cap + add);
     return this.stats.inventoryCap;
   }
 
@@ -405,15 +450,14 @@ export class GameState {
     return this.stats.inventory.splice(idx, 1)[0];
   }
 
-  /** Equips an item from the bag, moving anything already worn back into it. */
+  /**
+   * Equips an item, moving anything already worn into the bag. A swap is never
+   * blocked by a full bag: the old piece goes in even if that puts the bag one
+   * over its size, and nothing new can be picked up until it's back under.
+   */
   equip(item: ItemInstance): EquipResult {
     const current = this.stats.equipment[item.slot];
     this.removeItem(item.uid);
-    if (current && this.bagFull) {
-      // Put it back — we can't unequip into a full bag.
-      this.stats.inventory.push(item);
-      return { previous: current, blocked: true };
-    }
     this.stats.equipment[item.slot] = item;
     if (current) this.stats.inventory.push(current);
     this.clampHp();

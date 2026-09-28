@@ -1478,3 +1478,75 @@
   text-transform: uppercase;
   color: var(--text-faint);
 }
+
+/* ---------------------------------------------------------- sell by rarity -- */
+.rarity-sell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+}
+.rarity-sell-label {
+  font-size: var(--fs-2xs);
+  letter-spacing: var(--tr-label);
+  text-transform: uppercase;
+  color: var(--text-mute);
+}
+.rarity-sell-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.rarity-sell-chip {
+  --rc: var(--r-common);
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid color-mix(in srgb, var(--rc) 60%, transparent);
+  background: color-mix(in srgb, var(--rc) 12%, transparent);
+  color: var(--rc);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.rarity-sell-chip:active { transform: scale(0.97); }
+.rarity-sell-chip.is-armed {
+  background: var(--rc);
+  color: var(--bg-0);
+  animation: cb-pulse 0.9s ease-in-out infinite;
+}
+
+/* Rewarded-ad buttons while the ad is loading. */
+.btn.is-loading { opacity: 0.7; cursor: progress; }
+.btn.is-loading i { animation: spin-soft 1s linear infinite; display: inline-block; }
+@keyframes spin-soft { to { transform: rotate(360deg); } }
+
+/* Dev-only stand-in for a rewarded ad (MockAds in src/platform/ads.ts). */
+.mock-ad {
+  position: absolute;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  background: repeating-linear-gradient(45deg, #111827 0 18px, #0b1020 18px 36px);
+  color: #e5e7eb;
+}
+.mock-ad-body { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+.mock-ad-body b { font-size: 28px; letter-spacing: 0.2em; }
+.mock-ad-body span { font-family: monospace; opacity: 0.7; }
+.mock-ad-body em { font-style: normal; font-size: 64px; font-weight: 800; }
+.mock-ad-body u { text-decoration: none; font-size: 12px; opacity: 0.6; }
+.mock-ad-close {
+  position: absolute;
+  top: calc(var(--safe-top, 0px) + 14px);
+  right: 14px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 18px;
+}
+.mock-ad.is-done .mock-ad-close { background: #16a34a; }

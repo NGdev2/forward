@@ -388,7 +388,7 @@ export const en: Dictionary = {
   'reward.bag_full_sold': 'Bag full — {name} sold',
   'reward.bag_full_old': 'Bag is full — nowhere to put the old one',
   'reward.equipped_toast': 'Equipped {name}',
-  'reward.doubled': 'Doubled! (ad placeholder)',
+  'reward.doubled': 'Doubled!',
 
   /* ------------------------------------------------------ item detail -- */
   'detail.power': 'power',
@@ -521,7 +521,25 @@ export const en: Dictionary = {
   'shop.store_note': 'Store not connected yet — these are placeholders.',
   'shop.best_value': 'Best value',
   'shop.iap_disabled': 'In-app purchases are not enabled yet.',
-  'shop.free_gems': 'Free 10 💎',
+  'shop.free_gems': 'Free {n} 💎',
   'shop.watch_ad': 'Watch a short ad',
-  'shop.free_gems_toast': '+10 gems (ad placeholder)'
+  'shop.free_gems_toast': '+{n} gems',
+  'reward.overflow_note': 'Bag full — sold for {n} 🪙 when you leave, unless you wear it',
+  'reward.sell_now': 'Sell now · {n} 🪙',
+  'reward.sold_toast': 'Sold {name} for {n} 🪙',
+  'reward.bag_full_sold_n_one': 'Bag full — 1 drop sold for {gold} 🪙',
+  'reward.bag_full_sold_n_other': 'Bag full — {n} drops sold for {gold} 🪙',
+  'ads.unavailable': 'No ad available right now. Try again in a moment.',
+  'combat.revives_left': '{n}/{max} left',
+  'shop.bag_trader_out': 'This trader is out ({n} per trader). The next one will have more.',
+  'shop.bag_left_here': '{n} left here',
+  'shop.free_gems_note': 'Watch a short ad to earn {n} 💎.',
+  'inventory.sell_by_rarity': 'Sell by rarity · keeps upgrades',
+  'inventory.sell_confirm': 'Tap again: sell {n} {rarity}',
+  'title.distance': 'Distance',
+  'stats.distance': 'Distance travelled',
+  'settings.section_privacy': 'Privacy',
+  'settings.privacy_ads': 'Privacy & ads',
+  'settings.privacy_ads_desc': 'Review or change how ads may use your data.',
+  'settings.privacy_ads_open': 'Manage'
 };

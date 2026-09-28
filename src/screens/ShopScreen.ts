@@ -3,9 +3,10 @@ import type { ItemInstance, Rarity } from '../game/types';
 import { addLuckCharges, activeLuckBonus, makeItem, rollShopStock } from '../game/loot';
 import { CONSUMABLES, consumableById, type ConsumableDef, supplyPrice } from '../game/data/consumables';
 import { ITEM_SETS, setPieces, wornSetCounts, type ItemSet } from '../game/data/items';
-import { GameState } from '../game/state';
-import { clear, el, elementBadge, esc, itemDetail, itemTile, openSheet, rarityVar, sortItems } from './inventory/ui';
-import { rarityById } from '../game/config';
+import { BAG_CAP_BASE, BAG_CAP_MAX } from '../game/state';
+import { FEATURES } from '../platform/features';
+import { RARITY_TIERS, rarityById } from '../game/config';
+import { clear, el, elementBadge, esc, itemDetail, itemTile, openSheet, raritySellBar, rarityVar, sortItems } from './inventory/ui';
 import { desc as cdesc, fmtNum, itemDisplayName, name as cname, rarityLabel, slotLabel, t, tn } from '../i18n';
 
 /* ============================================================================
@@ -30,6 +31,8 @@ interface Stall {
   relicGems: number;
   /** One-per-visit specials already taken. */
   taken: Set<string>;
+  /** Bag expansions bought from this trader (each trader sells a few). */
+  bagBought: number;
 }
 
 let stall: Stall | null = null;
@@ -57,7 +60,11 @@ const GEM_PACKS = [
   { id: 'gems_l', gems: 1200, price: '$9.99', tag: 'shop.best_value', icon: '🔷' }
 ];
 
-const BAG_STEP = 6;
+const BAG_STEP = 5;
+/** Expansions one trader will sell; the rest wait for the next trader. */
+const BAG_PER_TRADER = 2;
+/** Free gems granted per rewarded ad. */
+const AD_GEMS = 10;
 const INCENSE_GEMS = 30;
 const INCENSE_LUCK = 18;
 const INCENSE_DROPS = 12;
@@ -85,9 +92,10 @@ export function gearPrice(item: ItemInstance): number {
   return Math.max(15, Math.round(item.power * 2.6 * tier.mult) + item.ilvl * 4);
 }
 
-/** Bag expansion cost climbs with the current cap so the last slots cost most. */
+/** Bag expansion cost climbs gently with the current cap (15 💎 first, ~140 💎 near the 200 ceiling). */
 export function bagPrice(cap: number): number {
-  return 20 + Math.max(0, cap - 24) * 5;
+  const c = Number.isFinite(cap) ? cap : BAG_CAP_BASE;
+  return 15 + Math.floor(Math.max(0, c - BAG_CAP_BASE) / BAG_STEP) * 4;
 }
 
 /** The set whose level band is nearest at-or-below `level + 4` (first set as floor). */
@@ -117,12 +125,14 @@ function newStall(level: number): Stall {
     bought: new Set(),
     relic,
     relicGems: relic ? Math.max(25, Math.ceil(gearPrice(relic) / 8)) : 0,
-    taken: new Set()
+    taken: new Set(),
+    bagBought: 0
   };
 }
 
 export class ShopScreen implements Screen {
   readonly id = 'shop' as const;
+  private tabs = TAB_DEFS;
 
   private ctx!: GameContext;
   private el!: HTMLElement;
@@ -133,7 +143,9 @@ export class ShopScreen implements Screen {
   mount(root: HTMLElement, ctx: GameContext, params: ScreenParams) {
     this.ctx = ctx;
     const p = params as ShopParams;
-    this.tab = TAB_DEFS.some(t => t.id === p.tab) ? (p.tab as Tab) : 'gear';
+    // The Gems tab only exists when it has something in it.
+    this.tabs = TAB_DEFS.filter(d => d.id !== 'gems' || FEATURES.iap || ctx.ads.available);
+    this.tab = this.tabs.some(t => t.id === p.tab) ? (p.tab as Tab) : 'gear';
     this.closeSheet = null;
     if (!stall) stall = newStall(ctx.state.stats.level);
     ctx.music.setMode('shop');
@@ -155,7 +167,7 @@ export class ShopScreen implements Screen {
         <p class="shop-line">${esc(t('shop.greet'))}</p>
       </div>
       <div class="shop-tabs seg">
-        ${TAB_DEFS.map(d => `<button class="seg-btn${d.id === this.tab ? ' is-on' : ''}" data-tab="${d.id}">${esc(t(d.key))}</button>`).join('')}
+        ${this.tabs.map(d => `<button class="seg-btn${d.id === this.tab ? ' is-on' : ''}" data-tab="${d.id}">${esc(t(d.key))}</button>`).join('')}
       </div>
       <div class="shop-body"></div>
       <div class="shop-foot">
@@ -428,22 +440,29 @@ export class ShopScreen implements Screen {
       list.appendChild(this.specialRow('🏵️', t('shop.relic_claimed'), t('shop.relic_claimed_note'), 'epic', null));
     }
 
-    // 2. Bag expansion — repeatable until the ceiling.
+    // 2. Bag expansion — a couple per trader, up to the overall ceiling.
     const cap = state.stats.inventoryCap;
-    const bagMaxed = cap >= GameState.BAG_CAP_MAX;
+    const bagMaxed = cap >= BAG_CAP_MAX;
+    const traderOut = stall!.bagBought >= BAG_PER_TRADER;
+    const bagNext = Math.min(BAG_CAP_MAX, cap + BAG_STEP);
     list.appendChild(
       this.specialRow(
         '🎒',
         t('shop.bag_expansion', { n: BAG_STEP }),
-        bagMaxed ? t('shop.bag_maxed', { n: cap }) : t('shop.bag_next', { from: cap, to: Math.min(GameState.BAG_CAP_MAX, cap + BAG_STEP) }),
-        'rare',
         bagMaxed
+          ? t('shop.bag_maxed', { n: cap })
+          : traderOut
+            ? t('shop.bag_trader_out', { n: BAG_PER_TRADER })
+            : `${t('shop.bag_next', { from: cap, to: bagNext })} · ${t('shop.bag_left_here', { n: BAG_PER_TRADER - stall!.bagBought })}`,
+        'rare',
+        bagMaxed || traderOut
           ? null
           : {
               gems: bagPrice(cap),
               onBuy: () => {
                 if (!this.pay('gems', 0, bagPrice(cap))) return;
                 const next = state.expandBag(BAG_STEP);
+                stall!.bagBought += 1;
                 this.ctx.audio.play('levelup');
                 this.ctx.toast(t('shop.bag_holds', { n: next }), 'good');
                 this.afterPurchase();
@@ -585,6 +604,13 @@ export class ShopScreen implements Screen {
     bar.appendChild(sellAll);
     host.appendChild(bar);
 
+    const byRarity = raritySellBar(state, (n, earned) => {
+      this.ctx.audio.play('coin');
+      this.ctx.toast(t('inventory.sold_many', { n, gold: gold(earned) }), 'good');
+      this.afterPurchase();
+    });
+    if (byRarity) host.appendChild(byRarity);
+
     const list = el('div', 'shop-list');
     for (const item of items) {
       const value = state.sellValue(item);
@@ -613,33 +639,47 @@ export class ShopScreen implements Screen {
   /* --------------------------------------------------------------- gems -- */
 
   private renderGems(host: HTMLElement) {
-    host.appendChild(el('p', 'shop-note', esc(t('shop.store_note'))));
-
-    const grid = el('div', 'shop-packs');
-    for (const pack of GEM_PACKS) {
-      const card = el('button', 'shop-pack btn');
-      card.innerHTML = `
-        ${pack.tag ? `<span class="shop-pack-tag">${esc(pack.tag.startsWith('shop.') ? t(pack.tag) : pack.tag)}</span>` : ''}
-        <span class="shop-pack-icon">${pack.icon}</span>
-        <b class="shop-pack-gems">${pack.gems} 💎</b>
-        <u class="shop-pack-price">${pack.price}</u>`;
-      card.addEventListener('click', () => {
-        this.ctx.audio.play('ui_back');
-        this.ctx.toast(t('shop.iap_disabled'), 'info');
-      });
-      grid.appendChild(card);
+    // Gem packs need Google Play Billing; they stay in the code but are hidden
+    // until FEATURES.iap is turned on.
+    if (FEATURES.iap) {
+      host.appendChild(el('p', 'shop-note', esc(t('shop.store_note'))));
+      const grid = el('div', 'shop-packs');
+      for (const pack of GEM_PACKS) {
+        const card = el('button', 'shop-pack btn');
+        card.innerHTML = `
+          ${pack.tag ? `<span class="shop-pack-tag">${esc(pack.tag.startsWith('shop.') ? t(pack.tag) : pack.tag)}</span>` : ''}
+          <span class="shop-pack-icon">${pack.icon}</span>
+          <b class="shop-pack-gems">${pack.gems} 💎</b>
+          <u class="shop-pack-price">${pack.price}</u>`;
+        card.addEventListener('click', () => {
+          this.ctx.audio.play('ui_back');
+          this.ctx.toast(t('shop.iap_disabled'), 'info');
+        });
+        grid.appendChild(card);
+      }
+      host.appendChild(grid);
     }
-    host.appendChild(grid);
 
-    // A free gem trickle keeps the tab useful before billing exists.
+    if (!this.ctx.ads.available) return;
+    host.appendChild(el('p', 'shop-note', esc(t('shop.free_gems_note', { n: AD_GEMS }))));
     const free = el('button', 'btn btn-gold btn-block shop-free');
-    free.innerHTML = `<i>📺</i><span>${esc(t('shop.free_gems'))}<u>${esc(t('shop.watch_ad'))}</u></span>`;
-    free.addEventListener('click', () => {
-      this.ctx.state.addGems(10);
+    free.innerHTML = `<i>📺</i><span>${esc(t('shop.free_gems', { n: AD_GEMS }))}<u>${esc(t('shop.watch_ad'))}</u></span>`;
+    free.addEventListener('click', async () => {
+      if (free.disabled) return;
+      free.disabled = true;
+      free.classList.add('is-loading');
+      const outcome = await this.ctx.ads.show('free_gems');
+      free.disabled = false;
+      free.classList.remove('is-loading');
+      if (outcome !== 'rewarded') {
+        if (outcome !== 'dismissed') this.ctx.toast(t('ads.unavailable'), 'info');
+        return;
+      }
+      this.ctx.state.addGems(AD_GEMS);
       this.ctx.audio.play('coin');
-      this.ctx.toast(t('shop.free_gems_toast'), 'good');
+      this.ctx.toast(t('shop.free_gems_toast', { n: AD_GEMS }), 'good');
       this.ctx.save();
-      this.syncPurse();
+      if (this.el.isConnected) this.syncPurse();
     });
     host.appendChild(free);
   }

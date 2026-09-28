@@ -82,7 +82,7 @@ Statistics (kills, bosses, parries, damage, gold, most-hunted), Support tiers (p
 Settings (EN/FR, music + SFX volume, reduced motion, auto-equip, reset). Dynamic music.
 Complete French localisation (485 UI keys + ~770 content names).
 
-**Packaging** — launcher icon + splash art, targetSdk 35, app id `com.ngdev.forward`,
+**Packaging** — launcher icon + splash art, targetSdk 35, app id `com.aidar.forward`,
 `scripts/android-release.sh` (keystore + signed AAB), `store/` listing texts EN/FR and a
 privacy policy draft. A debug APK (6.2 MB) built successfully against SDK 35.
 
@@ -101,8 +101,9 @@ These are real; nobody has played the build on a physical phone yet.
 - **Ratking / beast bosses** read a little flat (angular "mane" shape). Art polish candidate.
 - **Music mix** was checked for structure (modes, crossfades, intensity layers), not for taste.
   Volume defaults: music 0.6, SFX 0.8.
-- **Monetisation surfaces** ("Watch an ad", gem packs, support tiers) are labelled placeholders
-  and do nothing. Wire real SDKs (AdMob rewarded + Play Billing) or hide them before submission.
+- **Rewarded ads are implemented** (AdMob; see `docs/ADS-PLAN.md`) but not yet tested on a
+  real phone, and your real AdMob ids aren't configured yet. Gem packs and support tiers are
+  hidden behind `VITE_FEATURE_IAP` until Play Billing exists.
 
 ## 6. Backlog — fix / upgrade / add / test
 
@@ -141,11 +142,26 @@ These are real; nobody has played the build on a physical phone yet.
 - [ ] Battery/thermal after 15 minutes (music scheduler + canvas at 60 fps).
 - [ ] Closed test on Play (12 testers, 14 days) — required for new personal developer accounts.
 
+## 6b. Round 2 (2026-09-28, from `feedback.md`)
+
+- Bag starts at **40** slots (old saves raised to 40); traders sell **+5 slots, 2 per trader**,
+  up to **200** total. Price 15 💎 rising by 4 💎 every 5 slots.
+- Equipping is never blocked by a full bag (the old piece goes in, even one over the size).
+  Drops that don't fit stay on the reward screen to wear or sell; leftovers are sold on leaving.
+- Sell by rarity (trader Sell tab and bag), skipping upgrades; Epic+ asks for a second tap.
+- Save self-repair: any stat that isn't a number (the NaN gems / bag bug) is reset to its
+  default on load and before every save; spending functions refuse non-numbers.
+- Title shows total **distance** travelled; distance is saved when leaving the road and when
+  the app goes to the background (it used to be lost unless an encounter resolved).
+- Rewarded ads wired to AdMob: double reward (no limit), free 10 💎 (no limit), Second Wind
+  revive (3 per fight). Dev mock in the browser, test ads in debug APKs.
+- App id is `com.aidar.forward`.
+
 ## 7. Android build setup
 
 - Build machine: JDK 17 (`/usr/lib/jvm/java-17-openjdk-amd64`), Android SDK with platform 35
   (`ANDROID_HOME=~/Android/Sdk`), Node 18+ (Node 22 if Capacitor is upgraded, see ADS-PLAN).
-- `android/` is committed (app id `com.ngdev.forward`, SDK levels, icons, signing config).
+- `android/` is committed (app id `com.aidar.forward`, SDK levels, icons, signing config).
   Build output, Gradle caches, `local.properties` and the web assets Capacitor copies in are
   git-ignored; so are keystores, `keystore.properties` and any `.env*` file.
 - `npm run icons` re-renders launcher icons, splash screens, PWA icons and store graphics from
@@ -153,7 +169,8 @@ These are real; nobody has played the build on a physical phone yet.
 - `npm run android:debug` → debug APK; `npm run android:release` → signed AAB.
 
 ## 8. Release checklist (when you're ready)
-1. Decide on monetisation: wire AdMob rewarded + Play Billing, or hide the placeholder buttons.
+1. Ads: finish the AdMob setup in `docs/ADS-PLAN.md` §3 (ids in `.env.production.local` and
+   `android/admob.properties`, consent messages, app-ads.txt) and run its §5 checklist.
 2. `./scripts/android-release.sh keystore` once (back up `android/keystore/` and
    `android/keystore.properties` somewhere safe — losing them means never updating the app).
 3. Bump `versionCode`/`versionName` in `android/app/build.gradle`, then `npm run android:release`.

@@ -1,0 +1,4 @@
+# Copy to android/admob.properties (git-ignored) and fill in your AdMob APP id
+# (AdMob → Apps → your app → App settings). Note the "~" — this is the app id,
+# not an ad unit id (those use "/" and go in .env.production.local).
+appId=ca-app-pub-0000000000000000~0000000000
