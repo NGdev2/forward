@@ -11,7 +11,7 @@ Only **rewarded, opt-in** ads: no banners, no interstitials. The store listing's
 | Placement | Where | Reward | Limit |
 |---|---|---|---|
 | **Double it** | Reward screen after fights, chests, coin caches | ×2 the gold and XP just earned | Once per reward screen (it's one button). No other limit. |
-| **Second Wind** | Defeat panel in a fight | Back up at 60% HP, enemy at half its current HP | **3 per fight** ("2/3 left"), then the button disappears |
+| **Second Wind** | Defeat panel in a fight | Back up at 60% HP (the enemy keeps its HP) | **3 per fight** ("2/3 left"), then the button disappears |
 | **Free gems** | Trader → Gems tab | +10 💎 | None |
 
 The reward is granted **only** when AdMob reports the ad was watched to the end. Closing it
@@ -51,6 +51,8 @@ Code map:
    message and a **US states** message for the app. The game shows it automatically on
    first launch where it applies, and Settings gets a "Privacy & ads" row.
 4. **Payments** → fill in payment/tax info (needed before earnings pay out).
+
+Privacy policy (for the GDPR message and Play): **https://forward-privacy-policy.vercel.app/**
 5. Later, once the app is on Play: **link the AdMob app to the Play listing**
    (App settings → App store details).
 
@@ -83,7 +85,7 @@ policy (`store/privacy-policy.md`, already updated for ads).
 - **Advertising ID:** *Yes, used for advertising.* (The SDK adds the `AD_ID` permission.)
 - **Target audience:** 13+ (not designed for children — the ads are configured for teens
   and not child-directed).
-- **Privacy policy URL:** where you host `store/privacy-policy.md`.
+- **Privacy policy URL:** https://forward-privacy-policy.vercel.app/
 
 ## 4. Settings already chosen in code
 - Max ad content rating **Teen**; not child-directed; not under age of consent.

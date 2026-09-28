@@ -861,7 +861,6 @@ export class CombatScreen implements Screen {
       this.revives += 1;
       ctx.audio.play('levelup');
       ctx.state.stats.hp = Math.max(1, Math.round(ctx.state.maxHp * 0.6));
-      this.enemy.hp = Math.max(1, Math.round(this.enemy.hp * 0.5));
       ctx.save();
       this.resume();
     });

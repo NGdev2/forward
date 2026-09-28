@@ -1,5 +1,9 @@
 # Forward — Privacy Policy
 
+> **The published policy is https://forward-privacy-policy.vercel.app/** (Terms: `#terms`),
+> source in the `NGdev2/Forward-privacy-policy` repo. Use that URL in AdMob and Play Console.
+> This file is the plain-text draft it was written from.
+
 _Last updated: 2026-09-28_
 
 Forward ("the game") is an Android game developed and published by NGdev

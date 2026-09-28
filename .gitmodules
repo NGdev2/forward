@@ -1,0 +1,3 @@
+[submodule "privacy_policy"]
+	path = privacy_policy
+	url = git@github.com:NGdev2/Forward-privacy-policy.git
