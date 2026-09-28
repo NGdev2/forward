@@ -2,6 +2,7 @@ import type { GameContext } from '../../core/context';
 import type { CreaturePose, FxElement, HeroPose } from '../../render/api';
 import { lookFromEquipment } from '../../render/api';
 import type { EnemyInstance } from '../../game/types';
+import { canvasScale } from '../../render/quality';
 import { creatureExtent } from '../../render/sprites';
 import { ELEMENT_COLORS } from '../../render/fx';
 import { biomeFor, type Biome } from '../run/biomes';
@@ -154,7 +155,8 @@ export class CombatArena {
 
   resize() {
     const rect = this.canvas.getBoundingClientRect();
-    this.dpr = Math.min(2.5, window.devicePixelRatio || 1);
+    this.dpr = canvasScale();
+    this.bg = null;
     this.w = Math.max(1, rect.width);
     this.h = Math.max(1, rect.height);
     this.canvas.width = Math.round(this.w * this.dpr);
@@ -313,7 +315,9 @@ export class CombatArena {
       return Math.round((swing - skip) * 1000);
     }
 
-    const approach = this.reduced ? Math.min(opts.approach ?? swing, swing) : opts.approach ?? swing;
+    // An explicit approach is gameplay timing (the parry ring closes over it),
+    // so reduced motion must not shorten it; only default dashes are brief.
+    const approach = opts.approach ?? swing;
     const home = this.homeOf(side);
     const to = this.contactX(side) - home.x;
     a.move = { from: a.off, to, t: 0, dur: approach };
@@ -520,16 +524,50 @@ export class CombatArena {
 
   /* ----------------------------------------------------------------- draw -- */
 
+  /**
+   * Sky, hills, props, ground and the enemy backlight never change during a
+   * fight, so they are painted once into this layer and blitted each frame.
+   */
+  private bg: HTMLCanvasElement | null = null;
+
+  private buildBackground(): HTMLCanvasElement | null {
+    const cv = document.createElement('canvas');
+    cv.width = this.canvas.width;
+    cv.height = this.canvas.height;
+    const g = cv.getContext('2d');
+    if (!g) return null;
+    g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    const main = this.c;
+    this.c = g;
+    try {
+      this.drawSky(false);
+      this.drawHills('far');
+      this.drawProps();
+      this.drawHills('near');
+      this.drawGround();
+      this.drawBacklight();
+    } finally {
+      this.c = main;
+    }
+    return cv;
+  }
+
   draw() {
     const c = this.c;
     const { w, h } = this;
-    c.clearRect(0, 0, w, h);
-    this.drawSky();
-    this.drawHills('far');
-    this.drawProps();
-    this.drawHills('near');
-    this.drawGround();
-    this.drawBacklight();
+    this.bg ??= this.buildBackground();
+    if (this.bg) {
+      c.drawImage(this.bg, 0, 0, w, h);
+      this.drawStars();
+    } else {
+      c.clearRect(0, 0, w, h);
+      this.drawSky(true);
+      this.drawHills('far');
+      this.drawProps();
+      this.drawHills('near');
+      this.drawGround();
+      this.drawBacklight();
+    }
     this.drawQte();
     this.drawFighters();
     this.drawShots();
@@ -537,7 +575,7 @@ export class CombatArena {
     this.ctx.fx.draw(c);
   }
 
-  private drawSky() {
+  private drawSky(withStars: boolean) {
     const c = this.c;
     const b = this.biome;
     const g = c.createLinearGradient(0, 0, 0, this.groundY);
@@ -545,7 +583,13 @@ export class CombatArena {
     g.addColorStop(1, b.skyBottom);
     c.fillStyle = g;
     c.fillRect(0, 0, this.w, this.groundY + 2);
+    if (withStars) this.drawStars();
+  }
 
+  /** Twinkling stars: live, but only 40 tiny rects, all above the hills. */
+  private drawStars() {
+    const c = this.c;
+    const b = this.biome;
     if (b.stars) {
       c.fillStyle = 'rgba(255,255,255,0.65)';
       for (let i = 0; i < 40; i++) {

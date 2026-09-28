@@ -14,6 +14,7 @@ import { InventoryScreen } from './screens/InventoryScreen';
 import { ShopScreen } from './screens/ShopScreen';
 import { TitleScreen } from './screens/TitleScreen';
 import { setLanguage } from './i18n';
+import { setGraphicsQuality } from './render/quality';
 
 const root = document.getElementById('game-root');
 if (!root) throw new Error('#game-root missing');
@@ -21,6 +22,8 @@ if (!root) throw new Error('#game-root missing');
 const state = new GameState();
 // Localisation must be live before the first screen mounts.
 setLanguage(state.stats.settings.language);
+// Rendering quality must be known before the first canvas sizes itself.
+setGraphicsQuality(state.stats.settings.graphics);
 const sprites = new Sprites();
 const fx = new Fx();
 const audio = new Audio();
@@ -105,6 +108,10 @@ void manager.goto('title');
 void ads.init();
 
 // Dev-only handle so the QA harness can jump straight to a screen.
-if (import.meta.env.DEV) {
+if (import.meta.env.MODE !== 'production') {
   (window as unknown as Record<string, unknown>).__game = ctx;
+  // Test helpers for driving the game from a browser/devtools session.
+  void Promise.all([import('./game/data/enemies'), import('./game/data/bosses'), import('./render/quality')]).then(([e, b, q]) => {
+    (window as unknown as Record<string, unknown>).__dev = { pickEnemy: e.pickEnemy, pickBoss: b.pickBoss, quality: q };
+  });
 }

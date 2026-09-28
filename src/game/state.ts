@@ -118,7 +118,8 @@ function freshStats(): PlayerStats {
       autoEquip: false,
       sfxVolume: 0.8,
       musicVolume: 0.6,
-      language: 'en'
+      language: 'en',
+      graphics: 'auto'
     },
     onboarded: false
   };

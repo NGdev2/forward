@@ -1,6 +1,7 @@
 import type { GameContext } from '../../core/context';
 import type { RunEncounter } from '../../game/encounters';
 import { lookFromEquipment, type HeroLook } from '../../render/api';
+import { canvasScale } from '../../render/quality';
 import { biomeFor, type Biome, type SceneryKind } from './biomes';
 
 /* ============================================================================
@@ -130,12 +131,13 @@ export class RunScene {
 
   resize() {
     const rect = this.canvas.getBoundingClientRect();
-    this.dpr = Math.min(2, window.devicePixelRatio || 1);
+    this.dpr = canvasScale();
     this.w = Math.max(1, Math.round(rect.width));
     this.h = Math.max(1, Math.round(rect.height));
     this.canvas.width = Math.round(this.w * this.dpr);
     this.canvas.height = Math.round(this.h * this.dpr);
     this.c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    this.backdrop = null;
     this.seedStars();
     this.seedAmbient();
   }
@@ -558,7 +560,6 @@ export class RunScene {
     }
     this.drawSky();
     this.drawHills();
-    this.drawGround();
     this.drawRoad();
 
     // Everything on the road, painted far to near.
@@ -585,8 +586,19 @@ export class RunScene {
     void b;
   }
 
-  private drawSky() {
-    const c = this.c;
+  /**
+   * Sky gradient, sun and ground never change within a visit, so they are
+   * painted once per size into this layer; each frame is one blit.
+   */
+  private backdrop: HTMLCanvasElement | null = null;
+
+  private buildBackdrop(): HTMLCanvasElement | null {
+    const cv = document.createElement('canvas');
+    cv.width = this.canvas.width;
+    cv.height = this.canvas.height;
+    const c = cv.getContext('2d', { alpha: false });
+    if (!c) return null;
+    c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     const b = this.biome;
     const hy = this.horizonY;
     const g = c.createLinearGradient(0, 0, 0, hy + 20);
@@ -595,18 +607,8 @@ export class RunScene {
     c.fillStyle = g;
     c.fillRect(0, 0, this.w, hy + 24);
 
-    if (b.stars) {
-      for (const s of this.stars) {
-        const tw = 0.6 + 0.4 * Math.sin(this.time * 2 + s.x);
-        c.globalAlpha = s.a * tw;
-        c.fillStyle = '#ffffff';
-        c.fillRect(s.x, s.y, s.r, s.r);
-      }
-      c.globalAlpha = 1;
-    }
-
     // Sun / moon sitting just above the vanishing point.
-    const sx = this.w * 0.5 + this.bendAt(Z_FAR) * 0.06;
+    const sx = this.w * 0.5;
     const sy = hy - this.h * 0.09;
     const rr = this.w * 0.16;
     const glow = c.createRadialGradient(sx, sy, 0, sx, sy, rr * 2.4);
@@ -620,6 +622,32 @@ export class RunScene {
     c.arc(sx, sy, rr * 0.55, 0, Math.PI * 2);
     c.fill();
     c.globalAlpha = 1;
+
+    const gg = c.createLinearGradient(0, hy, 0, this.h);
+    gg.addColorStop(0, b.ground);
+    gg.addColorStop(1, b.groundB);
+    c.fillStyle = gg;
+    c.fillRect(0, hy, this.w, this.h - hy);
+    return cv;
+  }
+
+  private drawSky() {
+    const c = this.c;
+    const b = this.biome;
+    const hy = this.horizonY;
+    this.backdrop ??= this.buildBackdrop();
+    if (this.backdrop) c.drawImage(this.backdrop, 0, 0, this.w, this.h);
+
+    if (b.stars) {
+      for (const s of this.stars) {
+        const tw = 0.6 + 0.4 * Math.sin(this.time * 2 + s.x);
+        c.globalAlpha = s.a * tw;
+        c.fillStyle = '#ffffff';
+        c.fillRect(s.x, s.y, s.r, s.r);
+      }
+      c.globalAlpha = 1;
+    }
+
 
     // Boss approach: the sky goes dark and bruised from the top down.
     if (this.bossHeat > 0.01) {
@@ -677,8 +705,8 @@ export class RunScene {
           L.amp * (0.55 + 0.45 * Math.sin(t * 0.9)) * (0.7 + 0.3 * Math.sin(t * 0.31 + 1.7));
         c.lineTo(x, y);
       }
-      c.lineTo(this.w + L.step, L.base + 30);
-      c.lineTo(-L.step, L.base + 30);
+      c.lineTo(this.w + L.step, hy);
+      c.lineTo(-L.step, hy);
       c.closePath();
       c.fill();
     }
@@ -691,16 +719,6 @@ export class RunScene {
     c.fillRect(0, hy - this.h * 0.08, this.w, this.h * 0.14);
   }
 
-  private drawGround() {
-    const c = this.c;
-    const b = this.biome;
-    const hy = this.horizonY;
-    const g = c.createLinearGradient(0, hy, 0, this.h);
-    g.addColorStop(0, b.ground);
-    g.addColorStop(1, b.groundB);
-    c.fillStyle = g;
-    c.fillRect(0, hy, this.w, this.h - hy);
-  }
 
   private drawRoad() {
     const c = this.c;
@@ -1224,36 +1242,21 @@ export class RunScene {
     c.globalAlpha = m.alpha;
 
     // Ground pad: a coloured pool of light so the lane reads at any distance.
+    // Pad and beam are pre-rendered once per colour (markerGlow) and stretched
+    // into place: identical pixels, no new gradients every frame.
     const padW = (isBoss ? 260 : 150) * u;
     const padH = padW * 0.34;
     const pulse = 0.7 + 0.3 * Math.sin(this.time * (isBoss ? 6 : 3.2));
-    const pad = c.createRadialGradient(x, y, 0, x, y, padW);
-    pad.addColorStop(0, hexA(col, 0.55 * pulse));
-    pad.addColorStop(0.55, hexA(col, 0.2 * pulse));
-    pad.addColorStop(1, 'rgba(0,0,0,0)');
-    c.fillStyle = pad;
+    const glow = markerGlow(col, isBoss);
     c.save();
-    c.translate(x, y);
-    c.scale(1, padH / padW);
-    c.beginPath();
-    c.arc(0, 0, padW, 0, Math.PI * 2);
-    c.fill();
+    c.globalAlpha = m.alpha * pulse;
+    c.drawImage(glow.pad, x - padW, y - padH, padW * 2, padH * 2);
     c.restore();
 
     // Beam of light rising from the marker — visible even at the horizon.
     const beamH = (isBoss ? 460 : 240) * u;
-    const beam = c.createLinearGradient(x, y - beamH, x, y);
-    beam.addColorStop(0, 'rgba(0,0,0,0)');
-    beam.addColorStop(1, hexA(col, isBoss ? 0.34 : 0.22));
-    c.fillStyle = beam;
     const bw = padW * 0.34;
-    c.beginPath();
-    c.moveTo(x - bw * 0.35, y - beamH);
-    c.lineTo(x + bw * 0.35, y - beamH);
-    c.lineTo(x + bw, y);
-    c.lineTo(x - bw, y);
-    c.closePath();
-    c.fill();
+    c.drawImage(glow.beam, x - bw, y - beamH, bw * 2, beamH);
 
     // The thing itself.
     this.drawNodeBody(node, x, y + bob * 0.3, u, col);
@@ -1293,7 +1296,9 @@ export class RunScene {
       const scale = (node.kind === 'boss' ? 2.3 : node.kind === 'elite' ? 1.5 : 1.25) * u * 1.25;
       if (scale > 0.05) {
         this.ctx.sprites.drawCreature(c, x, y, scale, id, node.kind === 'boss' ? 'charge' : 'idle', {
-          time: t,
+          // Distant marker creatures idle at 12 steps/s: invisible at this
+          // size, and each step is a full rig render.
+          time: Math.floor(t * 12) / 12,
           facing: -1
         });
       }
@@ -1414,9 +1419,59 @@ export class RunScene {
     c.restore();
   }
 
+  /**
+   * Label plates are typeset once per marker and size step into a small
+   * image, then blitted: text layout every frame was a large share of the
+   * road's cost on phones while lanes approach.
+   */
+  private labels = new WeakMap<RunEncounter, { k: number; col: string; dpr: number; w: number; h: number; lift: number; canvas: HTMLCanvasElement }>();
+
   private drawLabel(node: RunEncounter, x: number, y: number, k: number, col: string) {
-    /* eslint-disable-next-line no-param-reassign -- x is clamped to the viewport below */
+    const kq = Math.round(k * 20) / 20;
+    let entry = this.labels.get(node);
+    if (!entry || entry.k !== kq || entry.col !== col || entry.dpr !== this.dpr) {
+      const size = this.measureLabel(node, kq);
+      // Room above the plate for the danger pips and the tag pill.
+      const lift = 10 * kq + 2;
+      const cw = size.w + 4;
+      const ch = size.h + lift + 2;
+      const canvas = entry?.canvas ?? document.createElement('canvas');
+      canvas.width = Math.ceil(cw * this.dpr);
+      canvas.height = Math.ceil(ch * this.dpr);
+      const g = canvas.getContext('2d');
+      if (!g) {
+        this.paintLabel(this.c, node, x, y, k, col, true);
+        return;
+      }
+      g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      g.clearRect(0, 0, cw, ch);
+      this.paintLabel(g, node, cw / 2, lift + size.h, kq, col, false);
+      entry = { k: kq, col, dpr: this.dpr, w: size.w, h: size.h, lift, canvas };
+      this.labels.set(node, entry);
+    }
+    // Keep the whole plate on screen; a clipped label is worse than a nudged one.
+    const margin = 6;
+    const cx = Math.min(this.w - margin - entry.w / 2, Math.max(margin + entry.w / 2, x));
+    const cw = entry.w + 4;
+    const ch = entry.h + entry.lift + 2;
+    this.c.drawImage(entry.canvas, cx - cw / 2, y - entry.h - entry.lift, cw, ch);
+  }
+
+  private measureLabel(node: RunEncounter, k: number): { w: number; h: number } {
     const c = this.c;
+    c.save();
+    const padX = 12 * k;
+    const icon = node.icon ?? '';
+    c.font = `700 ${Math.round(15 * k)}px ${FONT}`;
+    const iw = icon ? c.measureText(icon).width + 5 * k : 0;
+    const tw = c.measureText(node.title.toUpperCase()).width + iw;
+    c.font = `600 ${Math.round(11 * k)}px ${FONT}`;
+    const rw = c.measureText(node.rewardHint).width;
+    c.restore();
+    return { w: Math.max(tw, rw) + padX * 2, h: (node.rewardHint ? 40 : 26) * k };
+  }
+
+  private paintLabel(c: CanvasRenderingContext2D, node: RunEncounter, x: number, y: number, k: number, col: string, clamp: boolean) {
     const padX = 12 * k;
     const titleSize = Math.round(15 * k);
     const subSize = Math.round(11 * k);
@@ -1428,9 +1483,10 @@ export class RunScene {
     const rw = c.measureText(node.rewardHint).width;
     const w = Math.max(tw, rw) + padX * 2;
     const h = (node.rewardHint ? 40 : 26) * k;
-    // Keep the whole plate on screen; a clipped label is worse than a nudged one.
-    const margin = 6;
-    x = Math.min(this.w - margin - w / 2, Math.max(margin + w / 2, x));
+    if (clamp) {
+      const margin = 6;
+      x = Math.min(this.w - margin - w / 2, Math.max(margin + w / 2, x));
+    }
     const left = x - w / 2;
     const top = y - h;
 
@@ -1654,44 +1710,67 @@ export class RunScene {
     c.restore();
   }
 
-  private drawVignette() {
-    const c = this.c;
-    const g = c.createRadialGradient(
-      this.w * 0.5,
-      this.h * 0.5,
-      this.h * 0.28,
-      this.w * 0.5,
-      this.h * 0.5,
-      this.h * 0.78
-    );
-    g.addColorStop(0, 'rgba(0,0,0,0)');
-    g.addColorStop(1, 'rgba(0,0,0,0.55)');
-    c.fillStyle = g;
-    c.fillRect(0, 0, this.w, this.h);
+  /** Vignette, boss pulse and impact flash are CSS layers now (RunScreen.syncOverlays). */
+  private drawVignette() {}
 
-    if (this.bossHeat > 0.01) {
-      const p = this.bossHeat * (0.55 + 0.45 * Math.sin(this.time * 5));
-      const r = c.createRadialGradient(
-        this.w * 0.5,
-        this.h * 0.45,
-        this.h * 0.2,
-        this.w * 0.5,
-        this.h * 0.45,
-        this.h * 0.8
-      );
-      r.addColorStop(0, 'rgba(0,0,0,0)');
-      r.addColorStop(1, `rgba(255,40,70,${0.34 * p})`);
-      c.fillStyle = r;
-      c.fillRect(0, 0, this.w, this.h);
-    }
-    if (this.impact > 0) {
-      c.fillStyle = `rgba(255,255,255,${this.impact * 0.35})`;
-      c.fillRect(0, 0, this.w, this.h);
-    }
+  /** For the CSS overlays: boss-approach heat 0..1 and its pulse. */
+  get bossPulse(): number {
+    return this.bossHeat > 0.01 ? this.bossHeat * (0.55 + 0.45 * Math.sin(this.time * 5)) : 0;
+  }
+
+  /** For the CSS overlays: the white flash on arriving at an encounter. */
+  get impactFlash(): number {
+    return this.impact;
   }
 }
 
 const FONT = `'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif`;
+
+/**
+ * A lane marker's ground pad and light beam, rendered once per colour. The pad
+ * is a radial gradient in a square (stretched to an ellipse when drawn); the
+ * beam a vertical gradient trapezoid. Pulse is applied as globalAlpha, which
+ * scales every stop exactly like the old per-frame gradients did.
+ */
+const GLOW_CACHE = new Map<string, { pad: HTMLCanvasElement; beam: HTMLCanvasElement }>();
+function markerGlow(col: string, isBoss: boolean): { pad: HTMLCanvasElement; beam: HTMLCanvasElement } {
+  const key = `${col}|${isBoss ? 1 : 0}`;
+  let g = GLOW_CACHE.get(key);
+  if (g) return g;
+  const pad = document.createElement('canvas');
+  pad.width = pad.height = 256;
+  const pc = pad.getContext('2d');
+  if (pc) {
+    const rg = pc.createRadialGradient(128, 128, 0, 128, 128, 128);
+    rg.addColorStop(0, hexA(col, 0.55));
+    rg.addColorStop(0.55, hexA(col, 0.2));
+    rg.addColorStop(1, 'rgba(0,0,0,0)');
+    pc.fillStyle = rg;
+    pc.beginPath();
+    pc.arc(128, 128, 128, 0, Math.PI * 2);
+    pc.fill();
+  }
+  const beam = document.createElement('canvas');
+  beam.width = 64;
+  beam.height = 256;
+  const bc = beam.getContext('2d');
+  if (bc) {
+    const lg = bc.createLinearGradient(0, 0, 0, 256);
+    lg.addColorStop(0, 'rgba(0,0,0,0)');
+    lg.addColorStop(1, hexA(col, isBoss ? 0.34 : 0.22));
+    bc.fillStyle = lg;
+    bc.beginPath();
+    bc.moveTo(32 - 32 * 0.35, 0);
+    bc.lineTo(32 + 32 * 0.35, 0);
+    bc.lineTo(64, 256);
+    bc.lineTo(0, 256);
+    bc.closePath();
+    bc.fill();
+  }
+  g = { pad, beam };
+  GLOW_CACHE.set(key, g);
+  return g;
+}
 
 function hexA(hex: string, a: number): string {
   const h = hex.replace('#', '');

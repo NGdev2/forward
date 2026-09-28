@@ -239,6 +239,8 @@ export interface PlayerSettings {
   sfxVolume: number;
   musicVolume: number;
   language: Language;
+  /** Rendering quality; 'auto' = Balanced on touch devices, High elsewhere. */
+  graphics: 'auto' | 'high' | 'balanced';
 }
 
 /** Permanent stat picks bought with the points awarded on level up. */

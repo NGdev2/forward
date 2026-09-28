@@ -57,6 +57,8 @@ export class RunScreen implements Screen {
     this.wasChoosing = false;
     this.lastGold = -1;
     this.lastHp = -1;
+    this.lastPulse = -1;
+    this.lastImpact = -1;
     const biome = biomeFor(ctx.state.stats.worldCycle);
 
     const el = document.createElement('div');
@@ -71,6 +73,7 @@ export class RunScreen implements Screen {
     this.scene.onArrive = node => this.resolve(node);
     this.scene.onCommit = node => this.onCommit(node);
     this.scene.resize();
+    if (import.meta.env.MODE !== 'production') (window as unknown as Record<string, unknown>).__run = this.scene;
 
     this.ro = new ResizeObserver(() => this.scene.resize());
     this.ro.observe(el);
@@ -128,6 +131,9 @@ export class RunScreen implements Screen {
   private template(biomeName: string): string {
     return `
       <canvas class="run-canvas"></canvas>
+      <div class="run-vignette" aria-hidden="true"></div>
+      <div class="run-boss-pulse" aria-hidden="true"></div>
+      <div class="run-impact" aria-hidden="true"></div>
       <div class="run-hud">
         <div class="run-top topbar">
           <div class="run-hero-chip">
@@ -283,7 +289,30 @@ export class RunScreen implements Screen {
     }
 
     this.scene.draw();
+    this.syncOverlays();
     this.syncHud(false);
+  }
+
+  /* ------------------------------------------------------------- overlays -- */
+
+  private lastPulse = -1;
+  private lastImpact = -1;
+
+  /**
+   * Full-screen tints drawn by the compositor instead of the canvas: only
+   * opacity changes per frame, which costs almost nothing on phones.
+   */
+  private syncOverlays() {
+    const pulse = Math.round(this.scene.bossPulse * 50) / 50;
+    if (pulse !== this.lastPulse) {
+      this.lastPulse = pulse;
+      this.q('.run-boss-pulse').style.opacity = String(pulse);
+    }
+    const impact = Math.round(this.scene.impactFlash * 50) / 50;
+    if (impact !== this.lastImpact) {
+      this.lastImpact = impact;
+      this.q('.run-impact').style.opacity = String(impact * 0.35);
+    }
   }
 
   /* ------------------------------------------------------------------ hud -- */

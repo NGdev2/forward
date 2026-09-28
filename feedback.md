@@ -48,3 +48,12 @@ Overall everything looks amazing and very interesting to play.
 - revive by watching an ad: 3 revives per fight.
 - hide gem packs and support tiers for now (don't remove them, we will very possibly return them one day).
 - prepare the real advertisements for the Android build (AdMob), except in debug mode when launched locally.
+
+
+# Round 3 (2026-09-29) — playing on a real phone (Realme 6, Android 11)
+
+- Second Wind (revive by ad) should only bring me back to 60% HP. It must not also damage the enemy, otherwise every boss is easily won by watching 3 ads.
+- The game works on my phone, but it's kinda freezing — not ideal performance. Some games look better than ours with better graphics. Turning on reduced motion helped a little, but still not comfortable. → do the caching and add a graphics setting.
+- After the performance work: all perfect now.
+- On the phone the parry QTE animation was very fast. On PC the speed was nice (maybe even a little faster would be better).
+- The text on screen for the parry (successful / too early / too late) was not shown on the phone; on the web it worked. On the phone we only saw the parry info in the log.

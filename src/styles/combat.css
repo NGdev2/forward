@@ -18,6 +18,10 @@
 }
 
 .cb-canvas {
+  /* Own compositor layer: the canvas redraws every frame, and without this the
+     browser repaints every panel stacked on top of it (blurs, shadows) each
+     frame too. Measured on a Helio G90T phone: 18 fps -> 51 fps in combat. */
+  will-change: transform;
   position: absolute;
   inset: 0;
   width: 100%;

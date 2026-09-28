@@ -96,3 +96,17 @@
 .toast-good { border-color: var(--good); color: var(--good); }
 .toast-bad { border-color: var(--danger); color: #ff9aad; }
 .toast-legendary { border-color: var(--r-legendary); color: var(--r-legendary); }
+
+/* Reduced motion shortens every animation to ~0, which made floating texts
+   ("PARRY!", "Too early", damage numbers) vanish the instant they appeared.
+   Keep them readable: no movement, just hold and fade. */
+html.reduce-motion .float-num {
+  animation-name: fx-float-still !important;
+  animation-duration: 1.3s !important;
+  animation-timing-function: linear !important;
+}
+@keyframes fx-float-still {
+  0% { opacity: 1; }
+  75% { opacity: 1; }
+  100% { opacity: 0; }
+}

@@ -7,6 +7,7 @@ import { el, listeners, q } from '../ui/dom';
 import { button, optionRow, segmented, sheet, slider, toggle } from '../ui/components';
 import type { SheetHandle } from '../ui/components';
 import { FEATURES } from '../platform/features';
+import { canvasScale, getGraphicsQuality, setGraphicsQuality, type GraphicsQuality } from '../render/quality';
 import { LANGUAGES, fmtNum, getLanguage, name as cname, onLanguageChange, setLanguage, t, tn } from '../i18n';
 
 /* ============================================================================
@@ -437,6 +438,25 @@ export class TitleScreen implements Screen {
     );
 
     s.body.appendChild(el('p', { class: 'section-label settings-label' }, t('settings.section_play')));
+    s.body.appendChild(
+      optionRow(
+        t('settings.graphics'),
+        t('settings.graphics_desc'),
+        segmented(
+          (['auto', 'balanced', 'high'] as const).map(id => ({ id, label: t(`settings.graphics_${id}`) })),
+          getGraphicsQuality(),
+          (q: GraphicsQuality) => {
+            settings.graphics = q;
+            ctx.save();
+            setGraphicsQuality(q);
+            ctx.audio.play('ui_tap');
+            // The title's own canvas re-sizes to the new resolution right away.
+            this.resize?.();
+          },
+          t('settings.graphics')
+        )
+      )
+    );
     s.body.append(
       optionRow(
         t('settings.reduced_motion'),
@@ -522,7 +542,7 @@ export class TitleScreen implements Screen {
     this.c2d = c2d;
 
     const fit = () => {
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const dpr = canvasScale();
       const w = this.root.clientWidth || 390;
       const h = this.root.clientHeight || 844;
       this.w = w;

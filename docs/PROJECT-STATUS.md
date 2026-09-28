@@ -157,6 +157,27 @@ These are real; nobody has played the build on a physical phone yet.
   revive (3 per fight). Dev mock in the browser, test ads in debug APKs.
 - App id is `com.aidar.forward`.
 
+## 6c. Round 3 (2026-09-29): real-phone performance
+
+Measured on a Realme 6 (Helio G90T, 1080×2400) through the debug build's WebView devtools:
+
+| Screen | Before | After |
+|---|---|---|
+| Combat | 11 fps | 53–58 fps |
+| Road (running) | 16 fps | 59 fps |
+| Title | 47 fps | 57–59 fps |
+
+- Main cause: the full-screen canvases weren't on their own compositor layer, so every canvas
+  frame repainted all the blurred/shadowed UI on top (`will-change: transform` on the canvases).
+- Characters render through a pose cache (`render/sprites.ts`); static scenery is painted once
+  per size (arena background, road sky/sun/ground); marker glows and label plates are cached;
+  vignette / boss pulse / impact flash on the road are CSS layers.
+- Settings → Graphics: Auto / Balanced / High (`render/quality.ts`). Auto = Balanced (1.5×
+  canvas, 20 fps pose steps) on touch devices, High (2.5×, 30) elsewhere.
+- Parry ring closes in 0.9 s in all modes; reduced motion no longer shortens it, and floating
+  texts stay readable (hold + fade) with reduced motion.
+- Debug builds expose `window.__game`, `__combat`, `__run`, `__dev` for on-device measuring.
+
 ## 7. Android build setup
 
 - Build machine: JDK 17 (`/usr/lib/jvm/java-17-openjdk-amd64`), Android SDK with platform 35

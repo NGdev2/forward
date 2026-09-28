@@ -54,7 +54,7 @@ const PARRY_WINDOW = 0.11;
 /** Second Wind (rewarded-ad revive) uses allowed per fight. */
 const MAX_REVIVES = 3;
 /** How long the enemy's lunge takes during the QTE. */
-const QTE_APPROACH = 1.0;
+const QTE_APPROACH = 0.9;
 /** The banner sits alone for this long before the lunge starts. */
 const QTE_BANNER = 0.6;
 
@@ -189,7 +189,7 @@ export class CombatScreen implements Screen {
       this.unlock();
     });
 
-    if (import.meta.env.DEV) (window as unknown as Record<string, unknown>).__combat = this;
+    if (import.meta.env.MODE !== 'production') (window as unknown as Record<string, unknown>).__combat = this;
   }
 
   unmount() {
@@ -202,7 +202,7 @@ export class CombatScreen implements Screen {
     this.sheetClose?.();
     this.ctx.fx.clear();
     this.el.remove();
-    if (import.meta.env.DEV) delete (window as unknown as Record<string, unknown>).__combat;
+    if (import.meta.env.MODE !== 'production') delete (window as unknown as Record<string, unknown>).__combat;
   }
 
   /* ----------------------------------------------------------------- view -- */

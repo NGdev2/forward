@@ -14,6 +14,7 @@
 import type { CreaturePose, DrawOpts, HeroLook, HeroPose, SpriteKit } from './api';
 import { drawHeroRig, HERO_BOUNDS } from './hero';
 import { creatureDesign, creatureHeight, drawCreatureBody } from './creatures';
+import { animFps } from './quality';
 
 /** `scale` 1 means "about 100px tall" in the public contract. */
 const HERO_UNIT = 100 / HERO_BOUNDS.h;
@@ -125,6 +126,139 @@ function isolated(c: CanvasRenderingContext2D, paint: (c: CanvasRenderingContext
   c.restore();
 }
 
+/* ---------------------------------------------------------- pose cache --
+ * Rebuilding a rig from hundreds of vector shapes and gradients every frame
+ * was the single biggest cost on phones. Instead each on-screen figure keeps
+ * one offscreen image ("slot") keyed by who it is, its pose, its on-screen
+ * size bucket and facing. The slot is re-rendered only when the animation
+ * advances a step (quality.animFps per second); every other frame is a
+ * single drawImage. Hit flashes bypass the cache and draw live.
+ */
+
+interface Box {
+  l: number;
+  t: number;
+  r: number;
+  b: number;
+}
+
+interface Slot {
+  canvas: HTMLCanvasElement;
+  g: CanvasRenderingContext2D;
+  step: number;
+}
+
+const MAX_SLOTS = 24;
+/** Larger than this and caching costs more memory than it saves. */
+const MAX_SLOT_PX = 2048 * 1536;
+const slots = new Map<string, Slot>();
+const spare: HTMLCanvasElement[] = [];
+
+function slotFor(key: string, w: number, h: number): Slot | null {
+  let slot = slots.get(key);
+  if (slot) {
+    // LRU: most recently used last.
+    slots.delete(key);
+    slots.set(key, slot);
+    return slot;
+  }
+  while (slots.size >= MAX_SLOTS) {
+    const oldest = slots.keys().next().value as string;
+    const gone = slots.get(oldest);
+    slots.delete(oldest);
+    if (gone && spare.length < 6) spare.push(gone.canvas);
+  }
+  const canvas = spare.pop() ?? document.createElement('canvas');
+  if (canvas.width !== w || canvas.height !== h) {
+    canvas.width = w;
+    canvas.height = h;
+  }
+  const g = canvas.getContext('2d');
+  if (!g) return null;
+  slot = { canvas, g, step: Number.NaN };
+  slots.set(key, slot);
+  return slot;
+}
+
+/**
+ * Draws a figure through the pose cache.
+ * `unit` maps rig units to the caller's user space; `box` is the figure's
+ * paintable area in rig units (feet at 0,0, before facing).
+ */
+function cachedFigure(
+  c: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  unit: number,
+  facing: 1 | -1,
+  alpha: number | undefined,
+  id: string,
+  box: Box,
+  time: number,
+  render: (g: CanvasRenderingContext2D, time: number) => void
+) {
+  const m = c.getTransform();
+  const devicePerUser = Math.hypot(m.a, m.b);
+  // Size buckets 6% apart: a figure scaling smoothly (walking toward the
+  // camera) re-renders a few times, not every frame.
+  const bucket = Math.round(Math.log(Math.max(1e-4, unit * devicePerUser)) / Math.log(1.06));
+  const k = Math.pow(1.06, bucket);
+  const w = Math.max(1, Math.ceil((box.r - box.l) * k));
+  const h = Math.max(1, Math.ceil((box.b - box.t) * k));
+  const fps = animFps();
+  const step = Math.round(time * fps);
+
+  const slot = w * h <= MAX_SLOT_PX ? slotFor(`${id}|${bucket}|${facing}`, w, h) : null;
+  if (!slot) {
+    // Too big to cache: draw live, like before.
+    c.save();
+    c.translate(x, y);
+    c.scale(unit * facing, unit);
+    if (alpha !== undefined) c.globalAlpha *= alpha;
+    render(c, time);
+    c.restore();
+    return;
+  }
+  if (slot.step !== step) {
+    const g = slot.g;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, w, h);
+    // Mirror inside the slot so the blit is a plain axis-aligned copy.
+    g.setTransform(k * facing, 0, 0, k, facing > 0 ? -box.l * k : box.r * k, -box.t * k);
+    render(g, step / fps);
+    slot.step = step;
+  }
+  const left = facing > 0 ? box.l : -box.r;
+  c.save();
+  if (alpha !== undefined) c.globalAlpha *= alpha;
+  c.drawImage(slot.canvas, x + left * unit, y + box.t * unit, (box.r - box.l) * unit, (box.b - box.t) * unit);
+  c.restore();
+}
+
+function lookKey(look: HeroLook): string {
+  return [
+    look.weaponId, look.weaponRarity, look.offhandId, look.offhandRarity, look.helmId, look.helmRarity,
+    look.armorId, look.armorRarity, look.bootsId, look.bootsRarity, look.trinketId, look.trinketRarity
+  ].join(',');
+}
+
+/** Hero rig paint area, in rig units: weapon reach, aura and shadow included. */
+const HERO_BOX: Box = { l: -HERO_BOUNDS.w, t: -HERO_BOUNDS.h * 1.3, r: HERO_BOUNDS.w, b: HERO_BOUNDS.h * 0.14 };
+
+const CREATURE_BOX = new Map<string, Box>();
+function creatureBox(id: string): Box {
+  let box = CREATURE_BOX.get(id);
+  if (!box) {
+    const ext = creatureExtent(id);
+    // Generous: attack lunges, wings, auras and ground rings reach past the
+    // idle silhouette that was measured.
+    const half = ext.width * 0.62 + ext.height * 0.5;
+    box = { l: -half, t: -ext.height * 1.35, r: half, b: ext.height * 0.3 };
+    CREATURE_BOX.set(id, box);
+  }
+  return box;
+}
+
 export class Sprites implements SpriteKit {
   drawHero(
     c: CanvasRenderingContext2D,
@@ -136,6 +270,12 @@ export class Sprites implements SpriteKit {
     opts: DrawOpts
   ) {
     const facing = opts.facing ?? 1;
+    if (!opts.flash) {
+      cachedFigure(c, x, y, scale * HERO_UNIT, facing, opts.alpha, `h:${lookKey(look)}:${pose}`, HERO_BOX, opts.time, (g, time) =>
+        drawHeroRig(g, look, pose, { ...opts, time, alpha: undefined, flash: undefined })
+      );
+      return;
+    }
     const paint = (g: CanvasRenderingContext2D) => {
       g.save();
       g.translate(x, y);
@@ -144,8 +284,7 @@ export class Sprites implements SpriteKit {
       g.restore();
       if (opts.flash) flashOver(g, x, y, scale * HERO_UNIT, opts.flash);
     };
-    if (opts.flash) isolated(c, paint);
-    else paint(c);
+    isolated(c, paint);
   }
 
   drawCreature(
@@ -161,6 +300,12 @@ export class Sprites implements SpriteKit {
     // Normalise so `scale` 1 is ~100px of *painted* silhouette, regardless of
     // how large or horned the design happens to be.
     const unit = (100 / paintedHeight(enemyId)) * scale;
+    if (!opts.flash) {
+      cachedFigure(c, x, y, unit, facing, opts.alpha, `c:${enemyId}:${pose}`, creatureBox(enemyId), opts.time, (g, time) =>
+        drawCreatureBody(g, enemyId, pose, { ...opts, time, alpha: undefined, flash: undefined })
+      );
+      return;
+    }
     const paint = (g: CanvasRenderingContext2D) => {
       g.save();
       g.translate(x, y);
@@ -168,8 +313,7 @@ export class Sprites implements SpriteKit {
       drawCreatureBody(g, enemyId, pose, opts);
       g.restore();
     };
-    if (opts.flash) isolated(c, paint);
-    else paint(c);
+    isolated(c, paint);
   }
 
   creaturePortrait(enemyId: string, size: number): HTMLCanvasElement {
