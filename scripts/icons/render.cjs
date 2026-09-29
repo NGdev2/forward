@@ -2,7 +2,7 @@
 // scripts/icons/icon.html (procedural canvas art — no source images).
 //   node scripts/icons/render.cjs
 // Writes: android/app/src/main/res/{mipmap-*,drawable*}, public/icons/*,
-//         store/assets/{store-icon-512.png, feature-1024x500.png}
+//         store/assets/store-icon-512.png (the feature graphic comes from npm run store:images)
 const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
@@ -39,7 +39,6 @@ const RES = path.join(ROOT, 'android/app/src/main/res');
   await save(path.join(ROOT, 'public/icons/icon-192.png'), 'icon', 192, 192);
   await save(path.join(ROOT, 'public/icons/icon-512.png'), 'icon', 512, 512);
   await save(path.join(ROOT, 'store/assets/store-icon-512.png'), 'icon', 512, 512);
-  await save(path.join(ROOT, 'store/assets/feature-1024x500.png'), 'splash', 1024, 500);
   await b.close();
   console.log('icons rendered');
 })();

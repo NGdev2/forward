@@ -12,7 +12,7 @@ encounter; when full the boss blocks the road (no lane choice). Beating the boss
 world to the next biome. The game is infinite, offline, and ships no image or audio assets.
 
 **Stack:** Vite + TypeScript, plain DOM/CSS for UI, Canvas 2D for the world/fights, WebAudio for
-SFX and music, Capacitor 6 for Android. No framework, no server, no analytics.
+SFX and music, Capacitor 8 for Android. No framework, no server, no analytics.
 
 ## 2. How to run and test
 
@@ -82,9 +82,9 @@ Statistics (kills, bosses, parries, damage, gold, most-hunted), Support tiers (p
 Settings (EN/FR, music + SFX volume, reduced motion, auto-equip, reset). Dynamic music.
 Complete French localisation (485 UI keys + ~770 content names).
 
-**Packaging** — launcher icon + splash art, targetSdk 35, app id `com.aidar.forward`,
+**Packaging** — launcher icon + splash art, targetSdk 36 (Android 16), app id `com.aidar.forward`,
 `scripts/android-release.sh` (keystore + signed AAB), `store/` listing texts EN/FR and a
-privacy policy draft. A debug APK (6.2 MB) built successfully against SDK 35.
+privacy policy draft. Debug APKs build and run on a real phone (Realme 6, Android 11).
 
 ## 5. Known gaps and things to verify by hand
 
@@ -116,6 +116,7 @@ These are real; nobody has played the build on a physical phone yet.
 - [ ] Reward screen: with 3+ drops the loot list is long; consider collapsing non-upgrade drops.
 
 ### Upgrade (quality)
+- [ ] Vite 5 → 8 (clears the remaining `npm audit` findings, all dev-server/CLI only).
 - [ ] Beast-body creature rigs (Ratking, wolf, boar, bear): add a proper mane/fur silhouette.
 - [ ] Combat camera: subtle zoom on contact and on boss phase change.
 - [ ] Run screen: the marker plates could show the enemy's archetype icon and threat colour.
@@ -180,22 +181,32 @@ Measured on a Realme 6 (Helio G90T, 1080×2400) through the debug build's WebVie
 
 ## 7. Android build setup
 
-- Build machine: JDK 17 (`/usr/lib/jvm/java-17-openjdk-amd64`), Android SDK with platform 35
-  (`ANDROID_HOME=~/Android/Sdk`), Node 18+ (Node 22 if Capacitor is upgraded, see ADS-PLAN).
+- Build machine: **Node 22** (`nvm use`, the repo has `.nvmrc`), **JDK 21+**
+  (`/usr/lib/jvm/jdk-22`), Android SDK with platform 36 (`ANDROID_HOME=~/Android/Sdk`).
+- Capacitor 8.5 + `@capacitor-community/admob` 8.1; Gradle 8.14.3, AGP 8.13; minSdk 24
+  (Android 7.0), target/compile SDK 36 — Google Play's requirement since 2026-08-31.
+- `scripts/device/bench.sh` builds, installs and measures frame rate on a USB phone.
+- Dev-tooling audit findings remain (Vite 5 dev server, Capacitor CLI's uuid dep): nothing in
+  the shipped app; fixing needs Vite 8 — see backlog.
 - `android/` is committed (app id `com.aidar.forward`, SDK levels, icons, signing config).
   Build output, Gradle caches, `local.properties` and the web assets Capacitor copies in are
   git-ignored; so are keystores, `keystore.properties` and any `.env*` file.
-- `npm run icons` re-renders launcher icons, splash screens, PWA icons and store graphics from
+- `npm run store:images` recaptures the Play screenshots and feature graphics (EN/FR); see
+  `store/PLAY-CONSOLE.md`.
+- `npm run icons` re-renders launcher icons, splash screens, PWA icons and the store icon from
   `scripts/icons/icon.html`.
 - `npm run android:debug` → debug APK; `npm run android:release` → signed AAB.
 
-## 8. Release checklist (when you're ready)
-1. Ads: finish the AdMob setup in `docs/ADS-PLAN.md` §3 (ids in `.env.production.local` and
-   `android/admob.properties`, consent messages, app-ads.txt) and run its §5 checklist.
-2. `./scripts/android-release.sh keystore` once (back up `android/keystore/` and
-   `android/keystore.properties` somewhere safe — losing them means never updating the app).
-3. Bump `versionCode`/`versionName` in `android/app/build.gradle`, then `npm run android:release`.
-4. Host `store/privacy-policy.md` at a public URL; fill the Play listing from `store/listing-*.md`;
-   icon 512×512 and feature graphic 1024×500 are in `store/assets/` (`npm run icons`); take real phone
-   screenshots.
-5. Content rating (fantasy violence), data safety (no data), closed test, production.
+## 8. Release checklist
+
+Step-by-step Play Console answers are in `store/PLAY-CONSOLE.md`.
+
+1. ✅ AdMob app, 3 rewarded units, GDPR + US-states messages (ids in git-ignored
+   `.env.production.local` and `android/admob.properties`).
+2. ✅ Upload key: `android/keystore/forward_upload.jks` + `android/forward.keystore.properties`
+   (git-ignored — keep backups outside this machine).
+3. `npm run android:release` → signed `app-release.aab` (bump `versionCode` for every upload).
+4. ✅ Privacy policy live at https://forward-privacy-policy.vercel.app/.
+5. Play Console: listing, app content forms, internal test → closed test (12 testers, 14 days)
+   → production.
+6. After going live: link the app in AdMob, publish `app-ads.txt` on the listed website.

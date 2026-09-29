@@ -1,8 +1,8 @@
 apply plugin: 'com.android.application'
 
-// Release signing: android/keystore.properties is created by scripts/android-release.sh keystore
+// Release signing: android/forward.keystore.properties is created by scripts/android-release.sh keystore
 def keystoreProps = new Properties()
-def keystoreFile = rootProject.file('keystore.properties')
+def keystoreFile = rootProject.file('forward.keystore.properties')
 if (keystoreFile.exists()) keystoreProps.load(new FileInputStream(keystoreFile))
 
 // AdMob app id: debug builds always use Google's public TEST app id; release
@@ -13,19 +13,19 @@ if (admobFile.exists()) admobProps.load(new FileInputStream(admobFile))
 def ADMOB_TEST_APP_ID = 'ca-app-pub-3940256099942544~3347511713'
 
 android {
-    namespace "com.aidar.forward"
-    compileSdk rootProject.ext.compileSdkVersion
+    namespace = "com.aidar.forward"
+    compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "com.aidar.forward"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 2
-        versionName "0.2.0"
+        versionCode 3
+        versionName "0.3.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
-            ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
     signingConfigs {

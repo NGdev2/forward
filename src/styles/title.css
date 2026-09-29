@@ -682,3 +682,6 @@
     min-height: 48px;
   }
 }
+
+/* Keep numbers and their unit together ("18 450 m" must not wrap). */
+.journey-cell b, .stats-tile b { white-space: nowrap; }

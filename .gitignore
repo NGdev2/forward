@@ -31,6 +31,7 @@ android/admob.properties
 play-service-account*.json
 google-services.json
 *service-account*.json
+*keystore.properties
 
 # ---- native projects ---------------------------------------------------------
 # android/ IS committed (it holds the app id, SDK levels, icons, signing
@@ -51,3 +52,9 @@ output-metadata.json
 ios/App/Pods/
 ios/DerivedData/
 .capacitor/
+
+# Store capture intermediates (regenerate with scripts/store/*.cjs)
+store/screenshots/raw/
+store/assets/feature-scene.png
+store/assets/feature-hero.png
+store/assets/feature-boss.png

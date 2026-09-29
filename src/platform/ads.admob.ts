@@ -42,6 +42,12 @@ export class AdMobAds implements AdService {
 
   private async start() {
     await this.gatherConsent();
+    // Ads may only be requested once the consent flow allows it (a decision
+    // was made, or no consent is needed here). Otherwise retry on next show().
+    if (!this.canRequestAds) {
+      this.started = null;
+      return;
+    }
     await AdMob.initialize({
       initializeForTesting: adsMode() === 'test',
       maxAdContentRating: MaxAdContentRating.Teen,
@@ -62,18 +68,26 @@ export class AdMobAds implements AdService {
         testDeviceIdentifiers: testDevices(),
         ...(forceEea ? { debugGeography: AdmobConsentDebugGeography.EEA } : {})
       });
-      // Consent applies to this user (EEA/UK/CH or a US state message) once the
-      // status is anything but NOT_REQUIRED — Google then requires a way to
-      // change it later, which Settings offers.
-      this.privacyOptionsRequired = info.status !== AdmobConsentStatus.NOT_REQUIRED;
+      let latest = info;
       if (info.status === AdmobConsentStatus.REQUIRED && info.isConsentFormAvailable) {
-        await AdMob.showConsentForm();
+        latest = await AdMob.showConsentForm();
       }
+      this.applyConsent(latest);
     } catch (err) {
       // No consent message configured yet, or offline: ads still initialise and
       // AdMob serves limited/non-personalised ads where consent is missing.
       console.warn('[ads] consent', err);
     }
+  }
+
+  /** Whether Google allows ad requests with the consent gathered so far. */
+  private canRequestAds = true;
+
+  private applyConsent(info: { canRequestAds: boolean; privacyOptionsRequirementStatus: string }) {
+    this.canRequestAds = info.canRequestAds;
+    // Google requires an in-app entry point to change consent whenever the
+    // SDK says so (EEA/UK/CH, US states); Settings shows it on this flag.
+    this.privacyOptionsRequired = info.privacyOptionsRequirementStatus === 'REQUIRED';
   }
 
   private prepare(placement: AdPlacement): Promise<boolean> {
@@ -141,13 +155,14 @@ export class AdMobAds implements AdService {
 
   async showPrivacyOptions() {
     try {
-      await AdMob.resetConsentInfo();
-      const info = await AdMob.requestConsentInfo({ testDeviceIdentifiers: testDevices() });
-      if (info.isConsentFormAvailable) await AdMob.showConsentForm();
+      await AdMob.showPrivacyOptionsForm();
+      // The user may have changed their choice: refresh what's allowed.
+      this.applyConsent(await AdMob.requestConsentInfo({ testDeviceIdentifiers: testDevices() }));
     } catch (err) {
       console.warn('[ads] privacy options', err);
     }
   }
+
 }
 
 /** Optional hashed device ids (from logcat) that must always get test ads. */

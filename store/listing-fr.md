@@ -1,9 +1,9 @@
 # Forward — fiche Google Play (FR)
 
-**Nom (30) :** Forward : RPG de la route sans fin
+**Nom (30) :** Forward : RPG sans fin
 
 **Description courte (80) :**
-Parcourez une route infinie, choisissez votre voie, battez des boss, équipez votre héros.
+Route infinie, trois voies, boss et butin : faites avancer votre héros !
 
 **Description complète :**
 La route ne s'arrête jamais — et le butin non plus.

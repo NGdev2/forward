@@ -52,7 +52,7 @@ npm run build           # production web bundle -> dist/
 npx tsc --noEmit        # type check
 npm run sim             # headless combat-balance simulator (see scripts/BALANCE.md)
 npm run i18n:check      # English/French completeness
-npm run android:debug   # debug APK (needs JDK 17 + Android SDK 35, see docs)
+npm run android:debug   # debug APK (needs Node 22, JDK 21+, Android SDK 36; see docs)
 ```
 
 ## Tech

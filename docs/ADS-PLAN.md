@@ -107,11 +107,11 @@ policy (`store/privacy-policy.md`, already updated for ads).
       account for it.
 
 ## 6. Still to decide / do
-- **Capacitor upgrade (recommended before the first Play upload).** Ads run on Capacitor 6
-  with `@capacitor-community/admob@6.2`. Google Play raises the required Android target every
-  year; Capacitor 8 (+ AdMob plugin 8.x) targets the current level out of the box. It needs
-  **Node 22** on the build machine (this machine has Node 18). The upgrade is mechanical;
-  the ad code doesn't change.
+- **Capacitor upgrade: done (2026-09-29).** Capacitor 8.5 and `@capacitor-community/admob`
+  8.1, targeting Android 16 (API 36) as Google Play requires. Consent now uses the SDK's
+  `canRequestAds` and `privacyOptionsRequirementStatus`, and Settings → Privacy & ads opens
+  Google's dedicated privacy options form. Verified on a phone: consent, a test ad played to
+  the end, outcome "rewarded".
 - **In-app purchases.** Gem packs (trader) and support tiers (title screen) are hidden, not
   removed. They need Google Play Billing; set `VITE_FEATURE_IAP=true` to show them again once
   purchases are wired.
