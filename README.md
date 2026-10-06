@@ -7,6 +7,9 @@ turn-based duels with a timed parry. You loot and equip gear, level up, and when
 fills, a boss blocks the way with no lane around it. Beat it and the road moves on to a new
 biome. The road never ends.
 
+**▶ [Play in the browser](https://ngdev2.github.io/forward/)**, no install needed. It's built for phones, so on a computer it
+opens as a narrow, phone-width column.
+
 ![Forward — title, road, parry, relic sets](docs/screenshots/overview.jpg)
 
 - Tactical turn-based combat: telegraphed enemy moves, weapon skills, brace, potions, and a
